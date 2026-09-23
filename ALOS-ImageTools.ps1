@@ -2,7 +2,8 @@
 .SYNOPSIS
     ALOS Image Tools - A comprehensive Windows image management utility.
 .DESCRIPTION
-    A comprehensive tool built by Aarav Katariya designed to simplify your experience when dealing with WIM, ESD, SWM, ISO and IMG files. Built for and around casual users and advanced users so you do not have to remember those long command lines.
+    A comprehensive tool built by Aarav Katariya designed to simplify your experience when dealing with WIM, ESD, SWM, ISO and IMG files.
+    Built for and around casual users and advanced users so you do not have to remember those long command lines.
     Legal {
         Copyright (C) 2023-2026 Aarav Katariya
 
@@ -69,7 +70,7 @@
     This is a switch meaning it is optional.
     Decide if you want to use the Windows Presentation Foundation over Windows Forms.
     Use Windows Presentation Foundation for all GUI's instead of Windows Forms.
-    Trust me. It is far better.
+    There are two gui's to pick!
 .PARAMETER NoHashes
     This is a switch meaning it is optional.
     Decide if you want the file hashes or not.
@@ -182,8 +183,8 @@
 =========================================================================================
                      Every Windows PowerShell 5.1 type and accelerator.
 =========================================================================================
-Key                          Value
----                          -----
+Accelerator                  Full .NET/C# Type
+-----------                  ------------------
 ValidateScript               System.Management.Automation.ValidateScriptAttribute
 ValidateSet                  System.Management.Automation.ValidateSetAttribute
 ValidateRange                System.Management.Automation.ValidateRangeAttribute
@@ -258,8 +259,8 @@ ciminstance                  Microsoft.Management.Infrastructure.CimInstance
 ref                          System.Management.Automation.PSReference
 PSTypeNameAttribute          System.Management.Automation.PSTypeNameAttribute
 psprimitivedictionary        System.Management.Automation.PSPrimitiveDictionary
-psobject                     System.Management.Automation.PSObject
-pscustomobject               System.Management.Automation.PSObject
+PSObject                     System.Management.Automation.PSObject
+PSCustomObject               System.Management.Automation.PSObject
 regex                        System.Text.RegularExpressions.Regex
 SupportsWildcards            System.Management.Automation.SupportsWildcardsAttribute
 switch                       System.Management.Automation.SwitchParameter
@@ -1947,14 +1948,6 @@ function Process-Container {
     Complete-Progress $Activity 2
     return ($output | Out-File -FilePath $env:USERPROFILE\Desktop\wimlib-imagex_output.log -Encoding 'UTF8' -Append -NoClobber)
 }
-# Function to show finished.
-function Show-Finished {
-    # Finishup :)
-    $Host.UI.RawUI.WindowTitle = "$Op Completed On $Path" # Set the Window Title to say done.
-    $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2026 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
-    Info $MessageExit # Say to the user that the task is complete.
-    Exit 0 # And finally, exit the program with a status code of 0.
-}
 # Function to find all split wim parts.
 function Get-SplitWimParts {
     param(
@@ -2128,6 +2121,15 @@ function Set-WimImageMetadata {
         }
     }
     finally { [ALOSImageTools.NativeWimg]::WIMCloseHandle($WIMGAPI) | Out-Null }
+}
+# Function to show finished.
+function Show-Finished {
+    # Finishup :)
+    $Host.UI.RawUI.WindowTitle = "$Op Completed On $Path" # Set the Window Title to say done.
+    $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2026 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
+    Info $MessageExit # Say to the user that the task is complete.
+    if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { Stop-Process -Name powershell -Force } # If setup is launched, forcibly kill the PowerShell process because we assume user launched from the PowerShell command-line.
+    Exit 0 # Normal operations exit the program with a status code of 0.
 }
 Clear-Host # Because we have finished defining functions.
 # WPF dark mode. (Does not really work.)
@@ -3266,7 +3268,39 @@ switch -CaseSensitive ($Op) {
         Info "Success! We have changed image ${Index}'s properties!`r`n`r`nName: $($Verify.Name)`r`nDescription: $($Verify.Description)`r`nFlags: $($Verify.Flags)`r`n`r`nWIM: $Path"
     }
     'SetupProgram' {
+        Add-Type -Name 'Console' -Namespace 'Interop' -MemberDefinition @"
+[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+"@
+        $ConsoleHandle = [Interop.Console]::GetConsoleWindow()
+        if ($ConsoleHandle -ne [IntPtr]::Zero) { [void][Interop.Console]::ShowWindow($ConsoleHandle, 0) }
         if ($Op -ceq "SetupProgram" -and $Path -cne "SetupProgram") { Error "The path also needs to be SetupProgram." }
+        function Get-WPFThemeColours {
+            if ($script:ThemeMode) {
+                $Resolved = $script:ThemeMode
+                if ($Resolved -eq 'Auto') {
+                    try {
+                        $Value = Get-ItemPropertyValue -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name 'AppsUseLightTheme' -ErrorAction Stop
+                        $Resolved = if ($Value -eq 0) { 'Dark' } else { 'Light' }
+                    } catch { $Resolved = 'Dark' }
+                }
+                if ($Resolved -eq 'Light') {
+                    return [PSCustomObject]@{
+                        Back = [System.Drawing.Color]::White
+                        Fore = [System.Drawing.Color]::Black
+                    }
+                }
+                return [PSCustomObject]@{
+                    Back = [System.Drawing.Color]::Black
+                    Fore = [System.Drawing.Color]::White
+                }
+            }
+            $Legacy = Is-LightModeOn
+            return [PSCustomObject]@{
+                Back = if ($Legacy.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
+                Fore = if ($Legacy.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
+            }
+        }
         $PSExe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe"
         $UninstallA = @"
 Windows Registry Editor Version 5.00
@@ -3327,17 +3361,130 @@ Windows Registry Editor Version 5.00
 ; END OF CONTEXT MENU REGISTRY.
 ; ==========================================
 "@
-        function Install-ALOSImageTools { 
-            Clear-Host
-            $PSExePath = $PSExe -replace '\\', '\\' # Use a regex to find \ and replace with \\ to escape \ in registry file.
-            $ALOSImageTools_Skeleton = Read-Host "Enter the installation path or press ENTER to use the default directory of ${WorkingDir}." # Define the path.
+        function Show-PromptDialog {
+            param(
+                [Parameter(Mandatory)]
+                [string]$Prompt,
+                [string]$DefaultValue = ''
+            )
+            $ThemeColours = Get-WPFThemeColours
+            $DialogBack = $ThemeColours.Back
+            $DialogFore = $ThemeColours.Fore
+            $InputForm = New-Object System.Windows.Forms.Form
+            $InputForm.Text = 'ALOS Image Tools'
+            $InputForm.StartPosition = 'CenterScreen'
+            $InputForm.FormBorderStyle = 'FixedDialog'
+            $InputForm.MaximizeBox = $false
+            $InputForm.MinimizeBox = $false
+            $InputForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+            $InputForm.BackColor = $DialogBack
+            $InputForm.ForeColor = $DialogFore
+            $InputForm.ClientSize = New-Object System.Drawing.Size(600, 165)
+            $PromptLabel = New-Object System.Windows.Forms.Label
+            $PromptLabel.Text = $Prompt
+            $PromptLabel.AutoSize = $false
+            $PromptLabel.Location = New-Object System.Drawing.Point(15, 15)
+            $PromptLabel.Size = New-Object System.Drawing.Size(570, 55)
+            $PromptLabel.ForeColor = $DialogFore
+            $InputBox = New-Object System.Windows.Forms.TextBox
+            $InputBox.Location = New-Object System.Drawing.Point(15, 78)
+            $InputBox.Size = New-Object System.Drawing.Size(570, 25)
+            $InputBox.Text = $DefaultValue
+            $InputBox.BackColor = $DialogBack
+            $InputBox.ForeColor = $DialogFore
+            $OkButton = New-Object System.Windows.Forms.Button
+            $OkButton.Text = 'OK'
+            $OkButton.Location = New-Object System.Drawing.Point(420, 118)
+            $OkButton.Size = New-Object System.Drawing.Size(80, 30)
+            $OkButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $OkButton.FlatStyle = 'Flat'
+            $OkButton.BackColor = $DialogBack
+            $OkButton.ForeColor = $DialogFore
+            $CancelButton = New-Object System.Windows.Forms.Button
+            $CancelButton.Text = 'Cancel'
+            $CancelButton.Location = New-Object System.Drawing.Point(508, 118)
+            $CancelButton.Size = New-Object System.Drawing.Size(80, 30)
+            $CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+            $CancelButton.FlatStyle = 'Flat'
+            $CancelButton.BackColor = $DialogBack
+            $CancelButton.ForeColor = $DialogFore
+            $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CancelButton))
+            $InputForm.AcceptButton = $OkButton
+            $InputForm.CancelButton = $CancelButton
+            $InputResult = $InputForm.ShowDialog()
+            if ($InputResult -eq [System.Windows.Forms.DialogResult]::OK) { return $InputBox.Text }
+            return $null
+        }
+        function Show-UninstallChoices {
+            $ThemeColours = Get-WPFThemeColours
+            $DialogBack = $ThemeColours.Back
+            $DialogFore = $ThemeColours.Fore
+            $ChoiceForm = New-Object System.Windows.Forms.Form
+            $ChoiceForm.Text = 'ALOS Image Tools'
+            $ChoiceForm.StartPosition = 'CenterScreen'
+            $ChoiceForm.FormBorderStyle = 'FixedDialog'
+            $ChoiceForm.MaximizeBox = $false
+            $ChoiceForm.MinimizeBox = $false
+            $ChoiceForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+            $ChoiceForm.BackColor = $DialogBack
+            $ChoiceForm.ForeColor = $DialogFore
+            $ChoiceForm.ClientSize = New-Object System.Drawing.Size(640, 250)
+            $MessageLines = @(
+                [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Yellow },
+                [PSCustomObject]@{ Text = 'Do you want to revert to the modern menu (If on Windows 11)?'; Colour = [System.Drawing.Color]::Cyan },
+                [PSCustomObject]@{ Text = '1) Uninstall ALOS Image Tools but keep the classic context menu.'; Colour = [System.Drawing.Color]::Green },
+                [PSCustomObject]@{ Text = '2) Uninstall ALOS Image Tools and revert to modern context menu.'; Colour = [System.Drawing.Color]::Red },
+                [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Magenta },
+                [PSCustomObject]@{ Text = 'Click Yes or No. | Yes means choice 1 and No means choice 2.'; Colour = $DialogFore }
+            )
+            $LineY = 15
+            foreach ($MessageLine in $MessageLines) {
+                $MessageLabel = New-Object System.Windows.Forms.Label
+                $MessageLabel.Text = $MessageLine.Text
+                $MessageLabel.ForeColor = $MessageLine.Colour
+                $MessageLabel.AutoSize = $true
+                $MessageLabel.Location = New-Object System.Drawing.Point(15, $LineY)
+                $ChoiceForm.Controls.Add($MessageLabel)
+                $LineY += 24
+            }
+            $ChoiceOneButton = New-Object System.Windows.Forms.Button
+            $ChoiceOneButton.Text = 'Yes'
+            $ChoiceOneButton.Location = New-Object System.Drawing.Point(400, 205)
+            $ChoiceOneButton.Size = New-Object System.Drawing.Size(70, 30)
+            $ChoiceOneButton.DialogResult = [System.Windows.Forms.DialogResult]::Yes
+            $ChoiceOneButton.FlatStyle = 'Flat'
+            $ChoiceOneButton.BackColor = $DialogBack
+            $ChoiceOneButton.ForeColor = $DialogFore
+            $ChoiceTwoButton = New-Object System.Windows.Forms.Button
+            $ChoiceTwoButton.Text = 'No'
+            $ChoiceTwoButton.Location = New-Object System.Drawing.Point(480, 205)
+            $ChoiceTwoButton.Size = New-Object System.Drawing.Size(70, 30)
+            $ChoiceTwoButton.DialogResult = [System.Windows.Forms.DialogResult]::No
+            $ChoiceTwoButton.FlatStyle = 'Flat'
+            $ChoiceTwoButton.BackColor = $DialogBack
+            $ChoiceTwoButton.ForeColor = $DialogFore
+            $ChoiceCancelButton = New-Object System.Windows.Forms.Button
+            $ChoiceCancelButton.Text = 'Cancel'
+            $ChoiceCancelButton.Location = New-Object System.Drawing.Point(560, 205)
+            $ChoiceCancelButton.Size = New-Object System.Drawing.Size(70, 30)
+            $ChoiceCancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+            $ChoiceCancelButton.FlatStyle = 'Flat'
+            $ChoiceCancelButton.BackColor = $DialogBack
+            $ChoiceCancelButton.ForeColor = $DialogFore
+            $ChoiceForm.Controls.AddRange(@($ChoiceOneButton, $ChoiceTwoButton, $ChoiceCancelButton))
+            $ChoiceForm.CancelButton = $ChoiceCancelButton
+            return $ChoiceForm.ShowDialog()
+        }
+        function Install-ALOSImageTools {
+            $PSExePath = $PSExe -replace '\\', '\\'
+            $ALOSImageTools_Skeleton = Show-PromptDialog -Prompt "Enter the installation path or press ENTER to use the default directory of ${WorkingDir}."
+            if ($null -eq $ALOSImageTools_Skeleton) { return $false }
             if ([string]::IsNullOrWhiteSpace($ALOSImageTools_Skeleton)) { $ALOSImageTools_Skeleton = $WorkingDir }
             $Root = $ALOSImageTools_Skeleton
-            New-Item -ItemType Directory -Path $Root -Force | Out-Null # Create a directory.
-            Write-Host "Installing ALOS Image Tools to ${Root}!!!" -ForegroundColor Yellow
-            $ALOSImageToolsDir = $Root -replace '\\', '\\' # Use a regex to find \ and replace with \\ to escape \ in registry file.
-            $ALOSImageTools = "$ALOSImageToolsDir\\ALOS-ImageTools.ps1" # Manually add 2 \ to compensate for the file path in the registry.
-            $ModernUI = if ($WPFUI) { "Yes" } else { "No" } # Automatically install an extra parameter if the user launches setup with modern UI.
+            New-Item -ItemType Directory -Path $Root -Force | Out-Null
+            $ALOSImageToolsDir = $Root -replace '\\', '\\'
+            $ALOSImageTools = "$ALOSImageToolsDir\\ALOS-ImageTools.ps1"
+            $ModernUI = if ($WPFUI) { "Yes" } else { "No" }
             $Registry_WF = @"
 Windows Registry Editor Version 5.00
 
@@ -4354,12 +4501,10 @@ Windows Registry Editor Version 5.00
             try {
                 $Registry = if ($ModernUI -eq "Yes") { $Registry_WPF } elseif ($ModernUI -eq "No") { $Registry_WF } else { return $false }
                 Set-Content -LiteralPath $RegFile -Value $Registry -Encoding Unicode
-                & reg.exe import $RegFile
-                if ($LASTEXITCODE -gt 0) { Warn "Registry cannot be imported. Please try again."; Clear-Host; return $false }
+                & reg.exe import $RegFile 2>&1 | Out-Null
+                if ($LASTEXITCODE -gt 0) { return $false }
                 Remove-Item -LiteralPath $RegFile -Force -ErrorAction SilentlyContinue
-                Write-Host "ALOS Image Tools context-menu entries installed." -ForegroundColor Green
                 Stop-Process -Name explorer -Force | Out-Null
-                Write-Host "`r`nNext steps are:`r`nGrabbing the files."
                 $ZipPath = Join-Path $Root 'ALOS_Image_Tools.zip'
                 $Files = @(
                     "bin\7z.dll"
@@ -4405,41 +4550,28 @@ Windows Registry Editor Version 5.00
                 $PresentFiles = Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Root.Length + 1) }
                 $Missing = $Files | Where-Object { $_ -notin $PresentFiles }
                 if ($Missing) {
-                    Write-Error "Missing files:`r`n$($Missing -join "`r`n")" -ErrorAction Continue
-                    if (-not (Test-Path -LiteralPath $ZipPath)) {
-                        Write-Warning "Archive not found. Downloading it now..."
-                        Invoke-WebRequest -Uri "https://github.com/AaravLegendOS/alos-image-tools/raw/refs/heads/main/ALOS_Image_Tools.zip" -OutFile $ZipPath
-                    }
+                    if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "https://github.com/AaravLegendOS/alos-image-tools/raw/refs/heads/main/ALOS_Image_Tools.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -cne "38C4F562336BDEE743FD0527CE919DEF38667C20F6ED35C5C457AFCCD372FC8C") { Warn "SHA256 hash does not match. ($Hash)"; Clear-Host; return $false } # If the hash does not match, throw an error. An empty hash target always throws an error.
+                    if ($Hash -cne "38C4F562336BDEE743FD0527CE919DEF38667C20F6ED35C5C457AFCCD372FC8C") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
-                Write-Host "All files are present." -ForegroundColor Green
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
-                Clear-Host
                 return $true
-            } catch {
-                Warn $_
-                return $false
-            }
+            } catch { return $false }
         }
         function Uninstall-ALOSImageTools {
-            Clear-Host
-            Write-Host "=================================================================" -ForegroundColor Yellow
-            Write-Host "Do you want to revert to the modern menu (If on Windows 11)?" -ForegroundColor Cyan
-            Write-Host "1) Uninstall ALOS Image Tools but keep the classic context menu." -ForegroundColor Green
-            Write-Host "2) Uninstall ALOS Image Tools and revert to modern context menu." -ForegroundColor Red
-            Write-Host "=================================================================" -ForegroundColor Magenta
-            [int]$choice = Read-Host "Enter 1 or 2."
-            switch ($choice) { 1 { $UninstallFile = $UninstallA } 2 { $UninstallFile = $UninstallB } default { Clear-Host; return $false } }
+            $DialogResult = Show-UninstallChoices
+            switch ($DialogResult) {
+                { $_ -eq [System.Windows.Forms.DialogResult]::Yes } { $UninstallFile = $UninstallA }
+                { $_ -eq [System.Windows.Forms.DialogResult]::No }  { $UninstallFile = $UninstallB }
+                default { return $false }
+            }
             $UninstallRegistry = Join-Path $env:TEMP "ALOSImageTools_Uninstall.reg"
             Set-Content -Path $UninstallRegistry -Value $UninstallFile -Encoding Unicode
-            & reg.exe import $UninstallRegistry
+            & reg.exe import $UninstallRegistry 2>&1 | Out-Null
             if ($LASTEXITCODE -gt 0) { return $false }
             Remove-Item $UninstallRegistry -Force -ErrorAction Stop
-            Write-Host "ALOS Image Tools context-menu entries removed." -ForegroundColor Green
-            Stop-Process -Name explorer -Force
-            Clear-Host
+            Stop-Process -Name explorer -Force # PowerShell automatically restarts explorer.exe if killed with Stop-Process.
             return $true
         }
         if ($WPFUI) {
@@ -4648,7 +4780,7 @@ Windows Registry Editor Version 5.00
                 $Theme = if ($script:ThemeMode -eq 'Auto') { Get-SystemAppTheme } else { $script:ThemeMode }
                 switch ($Theme) {
                     'Light' {
-                        [pscustomobject]@{
+                        [PSCustomObject]@{
                             Bg = '#FFFFFFFF'
                             ControlBg = '#FFFFFFFF'
                             BorderBrush = '#FFB8B8B8'
@@ -4659,7 +4791,7 @@ Windows Registry Editor Version 5.00
                         }
                     }
                     default {
-                        [pscustomobject]@{
+                        [PSCustomObject]@{
                             Bg = '#FF000000'
                             ControlBg = '#FF000000'
                             BorderBrush = '#FF2A2A2A'
@@ -4773,18 +4905,7 @@ Windows Registry Editor Version 5.00
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsuccessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
-            $Form.Controls.AddRange(@(
-                $TitleLabel1,
-                $TitleLabel2,
-                $TitleLabel3,
-                $OptionLabel1,
-                $OptionLabel2,
-                $OptionLabel3,
-                $PromptLabel,
-                $InstallButton,
-                $UninstallButton,
-                $ReinstallButton
-            ))
+            $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton))
             [void]$Form.ShowDialog()
         }
     }
@@ -4801,5 +4922,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 4805
+    Line count: 4926
 #>
