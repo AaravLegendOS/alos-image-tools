@@ -171,7 +171,7 @@
         0 - Operation completed successfully.
         1 - Operation failed.
         2 - Relaunched as admin (normal).
-        9009 - Unknown operation specified. (Unused. Thanks ValidateSet!)
+        9009 - Unknown operation specified.
     Credits:
         Igor Pavlov - 7-Zip
         Eric Biggers - wimlib-imagex
@@ -182,6 +182,7 @@
         The program requires Windows PowerShell 5.1 not PowerShell Core 6 or 7 and must run with administrator privileges for all operations. If you do not, I will relaunch as admin.
 =========================================================================================
                      Every Windows PowerShell 5.1 type and accelerator.
+                        This will be highly useful for you to know.
 =========================================================================================
 Accelerator                  Full .NET/C# Type
 -----------                  ------------------
@@ -318,6 +319,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
+# Did you know you can put comments in a hashtable?
 [HashTable]$WindowsEditionIDs = @{
     # This is a list of literally ALL edition IDs for Windows Vista - Windows 11.
     # Windows XP and earlier are excluded because they do not use the WIM format.
@@ -329,8 +331,6 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "Enterprise"
         "EnterpriseN"
         "EnterpriseE"
-        "EnterpriseNEval"
-        "EnterpriseEval"
         "Starter"
         "StarterN"
         "HomeBasic"
@@ -358,12 +358,8 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "EducationN"
         "EnterpriseS"
         "EnterpriseSN"
-        "EnterpriseSEval"
-        "EnterpriseSNEval"
         "EnterpriseG"
         "EnterpriseGN"
-        "EnterpriseGEval"
-        "EnterpriseGNEval"
         "IoTEnterprise"
         "IoTEnterpriseK"
         "IoTEnterpriseS"
@@ -379,31 +375,23 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     # Windows Server 2003 and earlier are excluded because they do not use the WIM format.
     Server = @(
         "ServerStandard"
-        "ServerStandardEval"
         "ServerStandardCore"
-        "ServerStandardCoreEval"
         "ServerStandardV"
         "ServerStandardACor"
         "ServerStandardNano"
         "ServerDatacenter"
-        "ServerDatacenterEval"
         "ServerDatacenterCore"
-        "ServerDatacenterCoreEval"
         "ServerDatacenterV"
         "ServerDatacenterACor"
         "ServerDatacenterNano"
         "ServerEnterprise"
-        "ServerEnterpriseEval"
         "ServerEnterpriseCore"
-        "ServerEnterpriseCoreEval"
         "ServerEnterpriseV"
         "ServerEnterpriseCoreV"
         "ServerWeb"
-        "ServerWebEval"
         "ServerFoundation"
         "ServerEssentials"
         "ServerSolution"
-        "ServerSolutionEval"
         "ServerSolutionEM"
         "ServerForSmallBusiness"
         "ServerForSmallBusinessV"
@@ -414,15 +402,12 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "ServerSmallBusinessPremiumCore"
         "ServerStorageStandard"
         "ServerStorageStandardCore"
-        "ServerStorageStandardEval"
         "ServerStorageWorkgroup"
         "ServerStorageWorkgroupCore"
-        "ServerStorageWorkgroupEval"
         "ServerStorageEnterprise"
         "ServerStorageEnterpriseCore"
         "ServerStorageExpress"
         "ServerStorageExpressCore"
-        "ServerStorageExpressEval"
         "ServerHyperV"
         "ServerHyperVCore"
         "ServerCloudStorage"
@@ -449,18 +434,35 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "MediumBusinessServerSecurity"
     )
     # A list of banned edition ID's that will be blocked from use.
-    # Primarily industrial editions.
+    # Primarily industrial editions but also include evaluation editions.
     Banned = @(
         "IoTUAP"
         "IoTUAPCommercial"
         "EmbeddedIndustry"
         "EmbeddedIndustryE"
         "EmbeddedIndustryA"
+        "MobileCore"
+        "MobileEnterprise"
+        "EnterpriseNEval"
+        "EnterpriseEval"
+        "EnterpriseSEval"
+        "EnterpriseSNEval"
+        "EnterpriseGEval"
+        "EnterpriseGNEval"
         "EmbeddedIndustryEval"
         "EmbeddedIndustryEEval"
         "EmbeddedIndustryAEval"
-        "MobileCore"
-        "MobileEnterprise"
+        "ServerStandardEval"
+        "ServerStandardCoreEval"
+        "ServerDatacenterEval"
+        "ServerDatacenterCoreEval"
+        "ServerEnterpriseEval"
+        "ServerEnterpriseCoreEval"
+        "ServerWebEval"
+        "ServerSolutionEval"
+        "ServerStorageStandardEval"
+        "ServerStorageWorkgroupEval"
+        "ServerStorageExpressEval"
     )
 }
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) {
@@ -493,10 +495,12 @@ which will have to be Affero GPL licensed (because AGPL is stricter than GPL).
 '@
     # And then print it as well as a ten second delay.
     Write-Host $AGPLNotice -ForegroundColor Yellow # Ask me why I use 2023-20XX instead of just 20XX?
+    # But if we have WPFUI enabled, say this extra message.
+    if ($WPFUI) { Write-Host 'If you want to exit setup, you need to press Alt F4.' }
     Start-Sleep -Seconds 10
 } else {
     # Show the operation to the user.
-    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}.`r`n" # I hate LF line endings. I love CRLF endings.
+    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}.`r`n" # CRLF is Windows, LF is Unix and CR is Macintosh.
 }
 # Add assemblies and types for GUI.
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -987,54 +991,32 @@ namespace ALOSImageTools
 }
 '@
 }
+# Function to present a question to the user.
 function Question {
     param(
         [Parameter(Mandatory)]
         [string]$msg,
-        [System.Windows.Forms.MessageBoxButtons]$Buttons = [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]$Icon = [System.Windows.Forms.MessageBoxIcon]::Question
+        [ValidateSet("YesNo","YesNoCancel","OKCancel")]
+        [string]$Buttons = "YesNo",
+        [ValidateSet("Information","Warning","Error","Question")]
+        [string]$Type = "Question"
     )
     if ($WPFUI) {
-        $Buttons = @{
-            'Yes' = [System.Windows.MessageBoxResult]::Yes
-            'No' = [System.Windows.MessageBoxResult]::No
-            'OK' = [System.Windows.MessageBoxResult]::OK
-            'Cancel' = [System.Windows.MessageBoxResult]::Cancel
-        }
-        $WPFButtons = switch ($Buttons) {
-            ([System.Windows.Forms.MessageBoxButtons]::YesNo) { [System.Windows.MessageBoxButton]::YesNo }
-            ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel) { [System.Windows.MessageBoxButton]::YesNoCancel }
-            ([System.Windows.Forms.MessageBoxButtons]::OKCancel) { [System.Windows.MessageBoxButton]::OKCancel }
-            default { [System.Windows.MessageBoxButton]::OK }
-        }
-        $WPFIcon = switch ($Icon) {
-            ([System.Windows.Forms.MessageBoxIcon]::Question) { [System.Windows.MessageBoxImage]::Question }
-            ([System.Windows.Forms.MessageBoxIcon]::Error) { [System.Windows.MessageBoxImage]::Error }
-            ([System.Windows.Forms.MessageBoxIcon]::Warning) { [System.Windows.MessageBoxImage]::Warning }
-            default { [System.Windows.MessageBoxImage]::Information }
-        }
-        $Result = [System.Windows.MessageBox]::Show($msg, 'ALOS Image Tools', $WPFButtons, $WPFIcon)
-        switch ($Result) {
-            ([System.Windows.MessageBoxResult]::Yes) { return [System.Windows.Forms.DialogResult]::Yes }
-            ([System.Windows.MessageBoxResult]::No) { return [System.Windows.Forms.DialogResult]::No }
-            ([System.Windows.MessageBoxResult]::OK) { return [System.Windows.Forms.DialogResult]::OK }
-            ([System.Windows.MessageBoxResult]::Cancel) { return [System.Windows.Forms.DialogResult]::Cancel }
-            default { return [System.Windows.Forms.DialogResult]::None }
-        }
+        return [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',$Buttons,$Type)
     } else {
-        return [System.Windows.Forms.MessageBox]::Show($msg, 'ALOS Image Tools', $Buttons, $Icon)
+        return [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',$Buttons,$Type)
     }
 }
 # Function to show error message and exit.
 function Error($msg) {
     $Host.UI.RawUI.WindowTitle = "$Op Failed On $Path" # Set the Window Title to say failed.
-    if ($WPFUI) { [System.Windows.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null }
+    if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null }
     exit 1
 }
 # Function to show warning message.
-function Warn($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
+function Warn($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
 # Function to show information message.
-function Info($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg, 'ALOS Image Tools', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
+function Info($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
 # Function to set-progress. It depends on the Write-Progress cmdlet!
 function Set-Progress {
     param(
@@ -1043,6 +1025,7 @@ function Set-Progress {
         [Parameter(Mandatory)]
         [string]$Status,
         [Parameter(Mandatory)]
+        [ValidateRange(0,100)]
         [int]$PercentComplete,
         [Parameter(Mandatory=$false)]
         [uint16]$ProgID = 1
@@ -2171,7 +2154,7 @@ switch -CaseSensitive ($Op) {
         $description = Read-Host "Enter a description for the index."
         $CapArgs = @('capture', $src, $dest, $name, $description, '--compress=LZX', '--verbose', "--flags=$flags")
         $DestName = [System.IO.Path]::GetFileName($dest)
-        $result = Question -msg "Make the destination WIM bootable?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Make the destination WIM bootable?" -Buttons YesNoCancel
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) { $CapArgs += "--boot" } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) { Error "Operation cancelled." }
         Set-Progress "Capture" "Capturing $src to $DestName" 50
         try {
@@ -2195,7 +2178,7 @@ switch -CaseSensitive ($Op) {
         $description = Read-Host "Enter a description for the index."
         $AppendArgs = @('append', $src, $wimfile, $name, $description, '--compress=LZX', '--verbose', "--flags=$flags")
         $WimName = [System.IO.Path]::GetFileName($wimfile)
-        $result = Question -msg "Is the target WIM a boot image?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Is the target WIM a boot image?" -Buttons YesNoCancel
         $bootwim = $false
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             $AppendArgs += "--boot"
@@ -2237,7 +2220,7 @@ switch -CaseSensitive ($Op) {
             Set-Progress "Append" "Optimise failed" 100
             Error "Optimise failed.`r`n$($_.Exception.Message)"
         }
-        if ($bootwim -eq $true) {
+        if ($bootwim) {
             Remove-Item -Path $wimfile -Force
             Rename-Item -Path $out -NewName $wimfile
         }
@@ -2261,7 +2244,7 @@ switch -CaseSensitive ($Op) {
         }
         Set-Progress "Mount" "Mounted - waiting for user to unmount" 70
         $result = Question -msg "The image has mounted. You can make changes to the image at:`r`n${mnt}.`r`nWhen you have finished, return to this message box and choose if you want to save or discard.
-`r`nYes = Save`r`nNo = Discard" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
+`r`nYes = Save`r`nNo = Discard" -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             Set-Progress "Mount" "Unmounting and saving changes." 90
             try {
@@ -2297,7 +2280,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -msg "Should the exported WIM be marked bootable?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Should the exported WIM be marked bootable?" -Buttons YesNoCancel
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             $bootable = $true
             Write-Host "Marked exported WIM as bootable."
@@ -2367,7 +2350,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -msg "Should the exported ESD be marked bootable?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Should the exported ESD be marked bootable?" -Buttons YesNoCancel
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             $bootable = $true
             Write-Host "Marked exported ESD as bootable."
@@ -2759,7 +2742,7 @@ switch -CaseSensitive ($Op) {
             & $mountvol @('A:\', '/s') > $null 2>&1 # Mount EFI system partition.
             & $bcdboot @("$dir\Windows", '/s', 'A:\', '/f', 'ALL') > $null 2>&1 # Create boot files or update bcd.
             & $mountvol @('A:\', '/d') > $null 2>&1 # Unmount EFI system partition.
-            $result = Question -msg "Completed. Do you want to reboot into firmware to configure boot order?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Information)
+            $result = Question -msg "Completed. Do you want to reboot into firmware to configure boot order?" -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Information)
             if ($result -eq [System.Windows.Forms.DialogResult]::Yes) { & shutdown @('/r', '/fw', '/f', '/t', 0) } # If they consent, reboot to firmware setup. :)
         }
         Complete-Progress "Apply"
@@ -2804,7 +2787,7 @@ switch -CaseSensitive ($Op) {
     'RecompressWIM' {
         Set-Progress "RecompressWIM" "Optimising/compressing WIM" 50
         $destName = [System.IO.Path]::GetFileName($Path)
-        $result = Question -msg "Is this WIM a boot image that requires re-export?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Is this WIM a boot image that requires re-export?" -Buttons YesNoCancel
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             $out = $Path + "new"
             try {
@@ -2832,7 +2815,7 @@ switch -CaseSensitive ($Op) {
     # Recompress ESD operation. Used to optimise the size of the ESD file.
     'RecompressESD' {
         Set-Progress "RecompressESD" "Optimising/compressing ESD" 50
-        $result = Question -msg "Is this ESD a boot image that requires re-export?" -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+        $result = Question -msg "Is this ESD a boot image that requires re-export?" -Buttons YesNoCancel
         if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
             Write-Warning $CompressWarn
             $out = $Path + "new"
@@ -3143,7 +3126,7 @@ switch -CaseSensitive ($Op) {
             Complete-Progress $Op
             Error "$NewBootIndex is already the bootable image that boots when you boot from this file!"
         }
-        if ((Question "Are you sure you want to change the boot image?`r`n`r`nCurrent: ${CurrentBootIndex}`r`nNew: ${NewBootIndex}`r`n`r`nThis action can be undone afterwards." -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) {
+        if ((Question "Are you sure you want to change the boot image?`r`n`r`nCurrent: ${CurrentBootIndex}`r`nNew: ${NewBootIndex}`r`n`r`nThis action can be undone afterwards." -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) {
             Complete-Progress $Op
             Error "You aborted. Nothing has ever happened. Sssshhhh..."
         }
@@ -3249,7 +3232,7 @@ switch -CaseSensitive ($Op) {
         Clear-Host
         if ($WinForm.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { Error "Sorry! You (${env:USERNAME}) cancelled the operation." }
         if ([string]::IsNullOrWhiteSpace($NameBox.Text)) { Error "Sorry! No empty names please!" }
-        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons ([System.Windows.Forms.MessageBoxButtons]::YesNo) -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) { Error "Nevermind then..." }
+        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) { Error "Nevermind then..." }
         Set-Progress $Op "Changes are applying..." 80
         Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text
         Set-Progress $Op "We will confirm the changes." 95
@@ -3367,113 +3350,213 @@ Windows Registry Editor Version 5.00
                 [string]$Prompt,
                 [string]$DefaultValue = ''
             )
-            $ThemeColours = Get-WPFThemeColours
-            $DialogBack = $ThemeColours.Back
-            $DialogFore = $ThemeColours.Fore
-            $InputForm = New-Object System.Windows.Forms.Form
-            $InputForm.Text = 'ALOS Image Tools'
-            $InputForm.StartPosition = 'CenterScreen'
-            $InputForm.FormBorderStyle = 'FixedDialog'
-            $InputForm.MaximizeBox = $false
-            $InputForm.MinimizeBox = $false
-            $InputForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
-            $InputForm.BackColor = $DialogBack
-            $InputForm.ForeColor = $DialogFore
-            $InputForm.ClientSize = New-Object System.Drawing.Size(600, 165)
-            $PromptLabel = New-Object System.Windows.Forms.Label
-            $PromptLabel.Text = $Prompt
-            $PromptLabel.AutoSize = $false
-            $PromptLabel.Location = New-Object System.Drawing.Point(15, 15)
-            $PromptLabel.Size = New-Object System.Drawing.Size(570, 55)
-            $PromptLabel.ForeColor = $DialogFore
-            $InputBox = New-Object System.Windows.Forms.TextBox
-            $InputBox.Location = New-Object System.Drawing.Point(15, 78)
-            $InputBox.Size = New-Object System.Drawing.Size(570, 25)
-            $InputBox.Text = $DefaultValue
-            $InputBox.BackColor = $DialogBack
-            $InputBox.ForeColor = $DialogFore
-            $OkButton = New-Object System.Windows.Forms.Button
-            $OkButton.Text = 'OK'
-            $OkButton.Location = New-Object System.Drawing.Point(420, 118)
-            $OkButton.Size = New-Object System.Drawing.Size(80, 30)
-            $OkButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
-            $OkButton.FlatStyle = 'Flat'
-            $OkButton.BackColor = $DialogBack
-            $OkButton.ForeColor = $DialogFore
-            $CancelButton = New-Object System.Windows.Forms.Button
-            $CancelButton.Text = 'Cancel'
-            $CancelButton.Location = New-Object System.Drawing.Point(508, 118)
-            $CancelButton.Size = New-Object System.Drawing.Size(80, 30)
-            $CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-            $CancelButton.FlatStyle = 'Flat'
-            $CancelButton.BackColor = $DialogBack
-            $CancelButton.ForeColor = $DialogFore
-            $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CancelButton))
-            $InputForm.AcceptButton = $OkButton
-            $InputForm.CancelButton = $CancelButton
-            $InputResult = $InputForm.ShowDialog()
-            if ($InputResult -eq [System.Windows.Forms.DialogResult]::OK) { return $InputBox.Text }
-            return $null
+            if ($WPFUI) {
+                $ThemeColours = Get-WPFThemeColours
+                $DialogBack = $ThemeColours.Back
+                $DialogFore = $ThemeColours.Fore
+                $BgHex = '#{0:X2}{1:X2}{2:X2}' -f $DialogBack.R, $DialogBack.G, $DialogBack.B
+                $FgHex = '#{0:X2}{1:X2}{2:X2}' -f $DialogFore.R, $DialogFore.G, $DialogFore.B
+                $Xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ALOS Image Tools"
+        SizeToContent="Height"
+        Width="640"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="$BgHex"
+        Foreground="$FgHex"
+        FontFamily="Segoe UI"
+        FontSize="12">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock x:Name="PromptLabel" Grid.Row="0" TextWrapping="Wrap" MinHeight="55" Margin="0,0,0,10" Foreground="$FgHex"/>
+        <TextBox x:Name="InputBox" Grid.Row="1" Height="26" Margin="0,0,0,15" Background="$BgHex" Foreground="$FgHex"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="OkButton" Content="OK" Width="80" Height="30" Margin="0,0,8,0" Background="$BgHex" Foreground="$FgHex"/>
+            <Button x:Name="CancelButton" Content="Cancel" Width="80" Height="30" Background="$BgHex" Foreground="$FgHex"/>
+        </StackPanel>
+    </Grid>
+</Window>
+"@
+                $Reader = New-Object System.IO.StringReader($Xaml)
+                $XmlReader = [System.Xml.XmlReader]::Create($Reader)
+                $Window = [Windows.Markup.XamlReader]::Load($XmlReader)
+                $PromptLabel = $Window.FindName('PromptLabel')
+                $InputBox = $Window.FindName('InputBox')
+                $OkButton = $Window.FindName('OkButton')
+                $CancelButton = $Window.FindName('CancelButton')
+                $PromptLabel.Text = $Prompt
+                $InputBox.Text = $DefaultValue
+                $OkButton.Add_Click({ $Window.DialogResult = $true; $Window.Close() })
+                $CancelButton.Add_Click({ $Window.DialogResult = $false; $Window.Close() })
+                $InputBox.Add_Loaded({ $InputBox.Focus(); $InputBox.SelectAll() })
+                [void]$Window.ShowDialog()
+                if ($Window.DialogResult) { return $InputBox.Text }
+                return $null
+            } else {
+                $ThemeColours = Get-WPFThemeColours
+                $DialogBack = $ThemeColours.Back
+                $DialogFore = $ThemeColours.Fore
+                $InputForm = New-Object System.Windows.Forms.Form
+                $InputForm.Text = 'ALOS Image Tools'
+                $InputForm.StartPosition = 'CenterScreen'
+                $InputForm.FormBorderStyle = 'FixedDialog'
+                $InputForm.MaximizeBox = $false
+                $InputForm.MinimizeBox = $false
+                $InputForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+                $InputForm.BackColor = $DialogBack
+                $InputForm.ForeColor = $DialogFore
+                $InputForm.ClientSize = New-Object System.Drawing.Size(600, 165)
+                $PromptLabel = New-Object System.Windows.Forms.Label
+                $PromptLabel.Text = $Prompt
+                $PromptLabel.AutoSize = $false
+                $PromptLabel.Location = New-Object System.Drawing.Point(15, 15)
+                $PromptLabel.Size = New-Object System.Drawing.Size(570, 55)
+                $PromptLabel.ForeColor = $DialogFore
+                $InputBox = New-Object System.Windows.Forms.TextBox
+                $InputBox.Location = New-Object System.Drawing.Point(15, 78)
+                $InputBox.Size = New-Object System.Drawing.Size(570, 25)
+                $InputBox.Text = $DefaultValue
+                $InputBox.BackColor = $DialogBack
+                $InputBox.ForeColor = $DialogFore
+                $OkButton = New-Object System.Windows.Forms.Button
+                $OkButton.Text = 'OK'
+                $OkButton.Location = New-Object System.Drawing.Point(420, 118)
+                $OkButton.Size = New-Object System.Drawing.Size(80, 30)
+                $OkButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                $OkButton.FlatStyle = 'Flat'
+                $OkButton.BackColor = $DialogBack
+                $OkButton.ForeColor = $DialogFore
+                $CancelButton = New-Object System.Windows.Forms.Button
+                $CancelButton.Text = 'Cancel'
+                $CancelButton.Location = New-Object System.Drawing.Point(508, 118)
+                $CancelButton.Size = New-Object System.Drawing.Size(80, 30)
+                $CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+                $CancelButton.FlatStyle = 'Flat'
+                $CancelButton.BackColor = $DialogBack
+                $CancelButton.ForeColor = $DialogFore
+                $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CancelButton))
+                $InputForm.AcceptButton = $OkButton
+                $InputForm.CancelButton = $CancelButton
+                $InputResult = $InputForm.ShowDialog()
+                if ($InputResult -eq [System.Windows.Forms.DialogResult]::OK) { return $InputBox.Text }
+                return $null
+            }
         }
         function Show-UninstallChoices {
-            $ThemeColours = Get-WPFThemeColours
-            $DialogBack = $ThemeColours.Back
-            $DialogFore = $ThemeColours.Fore
-            $ChoiceForm = New-Object System.Windows.Forms.Form
-            $ChoiceForm.Text = 'ALOS Image Tools'
-            $ChoiceForm.StartPosition = 'CenterScreen'
-            $ChoiceForm.FormBorderStyle = 'FixedDialog'
-            $ChoiceForm.MaximizeBox = $false
-            $ChoiceForm.MinimizeBox = $false
-            $ChoiceForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
-            $ChoiceForm.BackColor = $DialogBack
-            $ChoiceForm.ForeColor = $DialogFore
-            $ChoiceForm.ClientSize = New-Object System.Drawing.Size(640, 250)
-            $MessageLines = @(
-                [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Yellow },
-                [PSCustomObject]@{ Text = 'Do you want to revert to the modern menu (If on Windows 11)?'; Colour = [System.Drawing.Color]::Cyan },
-                [PSCustomObject]@{ Text = '1) Uninstall ALOS Image Tools but keep the classic context menu.'; Colour = [System.Drawing.Color]::Green },
-                [PSCustomObject]@{ Text = '2) Uninstall ALOS Image Tools and revert to modern context menu.'; Colour = [System.Drawing.Color]::Red },
-                [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Magenta },
-                [PSCustomObject]@{ Text = 'Click Yes or No. | Yes means choice 1 and No means choice 2.'; Colour = $DialogFore }
-            )
-            $LineY = 15
-            foreach ($MessageLine in $MessageLines) {
-                $MessageLabel = New-Object System.Windows.Forms.Label
-                $MessageLabel.Text = $MessageLine.Text
-                $MessageLabel.ForeColor = $MessageLine.Colour
-                $MessageLabel.AutoSize = $true
-                $MessageLabel.Location = New-Object System.Drawing.Point(15, $LineY)
-                $ChoiceForm.Controls.Add($MessageLabel)
-                $LineY += 24
+            if ($WPFUI) {
+                $ThemeColours = Get-WPFThemeColours
+                $DialogBack = $ThemeColours.Back
+                $DialogFore = $ThemeColours.Fore
+                $BgHex = '#{0:X2}{1:X2}{2:X2}' -f $DialogBack.R, $DialogBack.G, $DialogBack.B
+                $FgHex = '#{0:X2}{1:X2}{2:X2}' -f $DialogFore.R, $DialogFore.G, $DialogFore.B
+                $Xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ALOS Image Tools"
+        SizeToContent="Height"
+        Width="700"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="$BgHex"
+        Foreground="$FgHex"
+        FontFamily="Segoe UI"
+        FontSize="12">
+    <StackPanel Margin="15">
+        <TextBlock Text="=============================================" Foreground="Yellow"  Margin="0,0,0,4"/>
+        <TextBlock Text="Do you want to revert to the modern menu (If on Windows 11)?" Foreground="Cyan" Margin="0,0,0,4"/>
+        <TextBlock Text="1) Uninstall ALOS Image Tools but keep the classic context menu." Foreground="Green" Margin="0,0,0,4"/>
+        <TextBlock Text="2) Uninstall ALOS Image Tools and revert to modern context menu." Foreground="Red" Margin="0,0,0,4"/>
+        <TextBlock Text="=============================================" Foreground="Magenta" Margin="0,0,0,4"/>
+        <TextBlock Text="Click Yes or No. | Yes means choice 1 and No means choice 2." Foreground="$FgHex" Margin="0,0,0,4"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button x:Name="ChoiceOneButton" Content="Yes" Width="70" Height="30" Margin="0,0,8,0" Background="$BgHex" Foreground="$FgHex"/>
+            <Button x:Name="ChoiceTwoButton" Content="No" Width="70" Height="30" Margin="0,0,8,0" Background="$BgHex" Foreground="$FgHex"/>
+            <Button x:Name="ChoiceCancelButton" Content="Cancel" Width="70" Height="30" Background="$BgHex" Foreground="$FgHex"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
+"@
+                $Reader = New-Object System.IO.StringReader($Xaml)
+                $XmlReader = [System.Xml.XmlReader]::Create($Reader)
+                $Window = [Windows.Markup.XamlReader]::Load($XmlReader)
+                $ChoiceOneButton = $Window.FindName('ChoiceOneButton')
+                $ChoiceTwoButton = $Window.FindName('ChoiceTwoButton')
+                $ChoiceCancelButton = $Window.FindName('ChoiceCancelButton')
+                $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel
+                $ChoiceOneButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Yes; $Window.DialogResult = $true; $Window.Close() })
+                $ChoiceTwoButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::No; $Window.DialogResult = $true; $Window.Close() })
+                $ChoiceCancelButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel; $Window.DialogResult = $false; $Window.Close() })
+                $Window.Add_Closed({ if ($Window.DialogResult -ne $true) { $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel } })
+                [void]$Window.ShowDialog()
+                return $script:UninstallDialogResult
+            } else {
+                $ThemeColours = Get-WPFThemeColours
+                $DialogBack = $ThemeColours.Back
+                $DialogFore = $ThemeColours.Fore
+                $ChoiceForm = New-Object System.Windows.Forms.Form
+                $ChoiceForm.Text = 'ALOS Image Tools'
+                $ChoiceForm.StartPosition = 'CenterScreen'
+                $ChoiceForm.FormBorderStyle = 'FixedDialog'
+                $ChoiceForm.MaximizeBox = $false
+                $ChoiceForm.MinimizeBox = $false
+                $ChoiceForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+                $ChoiceForm.BackColor = $DialogBack
+                $ChoiceForm.ForeColor = $DialogFore
+                $ChoiceForm.ClientSize = New-Object System.Drawing.Size(640, 250)
+                $MessageLines = @(
+                    [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Yellow },
+                    [PSCustomObject]@{ Text = 'Do you want to revert to the modern menu (If on Windows 11)?'; Colour = [System.Drawing.Color]::Cyan },
+                    [PSCustomObject]@{ Text = '1) Uninstall ALOS Image Tools but keep the classic context menu.'; Colour = [System.Drawing.Color]::Green },
+                    [PSCustomObject]@{ Text = '2) Uninstall ALOS Image Tools and revert to modern context menu.'; Colour = [System.Drawing.Color]::Red },
+                    [PSCustomObject]@{ Text = '============================================='; Colour = [System.Drawing.Color]::Magenta },
+                    [PSCustomObject]@{ Text = 'Click Yes or No. | Yes means choice 1 and No means choice 2.'; Colour = $DialogFore }
+                )
+                $LineY = 15
+                foreach ($MessageLine in $MessageLines) {
+                    $MessageLabel = New-Object System.Windows.Forms.Label
+                    $MessageLabel.Text = $MessageLine.Text
+                    $MessageLabel.ForeColor = $MessageLine.Colour
+                    $MessageLabel.AutoSize = $true
+                    $MessageLabel.Location = New-Object System.Drawing.Point(15, $LineY)
+                    $ChoiceForm.Controls.Add($MessageLabel)
+                    $LineY += 24
+                }
+                $ChoiceOneButton = New-Object System.Windows.Forms.Button
+                $ChoiceOneButton.Text = 'Yes'
+                $ChoiceOneButton.Location = New-Object System.Drawing.Point(400, 205)
+                $ChoiceOneButton.Size = New-Object System.Drawing.Size(70, 30)
+                $ChoiceOneButton.DialogResult = [System.Windows.Forms.DialogResult]::Yes
+                $ChoiceOneButton.FlatStyle = 'Flat'
+                $ChoiceOneButton.BackColor = $DialogBack
+                $ChoiceOneButton.ForeColor = $DialogFore
+                $ChoiceTwoButton = New-Object System.Windows.Forms.Button
+                $ChoiceTwoButton.Text = 'No'
+                $ChoiceTwoButton.Location = New-Object System.Drawing.Point(480, 205)
+                $ChoiceTwoButton.Size = New-Object System.Drawing.Size(70, 30)
+                $ChoiceTwoButton.DialogResult = [System.Windows.Forms.DialogResult]::No
+                $ChoiceTwoButton.FlatStyle = 'Flat'
+                $ChoiceTwoButton.BackColor = $DialogBack
+                $ChoiceTwoButton.ForeColor = $DialogFore
+                $ChoiceCancelButton = New-Object System.Windows.Forms.Button
+                $ChoiceCancelButton.Text = 'Cancel'
+                $ChoiceCancelButton.Location = New-Object System.Drawing.Point(560, 205)
+                $ChoiceCancelButton.Size = New-Object System.Drawing.Size(70, 30)
+                $ChoiceCancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+                $ChoiceCancelButton.FlatStyle = 'Flat'
+                $ChoiceCancelButton.BackColor = $DialogBack
+                $ChoiceCancelButton.ForeColor = $DialogFore
+                $ChoiceForm.Controls.AddRange(@($ChoiceOneButton, $ChoiceTwoButton, $ChoiceCancelButton))
+                $ChoiceForm.CancelButton = $ChoiceCancelButton
+                return $ChoiceForm.ShowDialog()
             }
-            $ChoiceOneButton = New-Object System.Windows.Forms.Button
-            $ChoiceOneButton.Text = 'Yes'
-            $ChoiceOneButton.Location = New-Object System.Drawing.Point(400, 205)
-            $ChoiceOneButton.Size = New-Object System.Drawing.Size(70, 30)
-            $ChoiceOneButton.DialogResult = [System.Windows.Forms.DialogResult]::Yes
-            $ChoiceOneButton.FlatStyle = 'Flat'
-            $ChoiceOneButton.BackColor = $DialogBack
-            $ChoiceOneButton.ForeColor = $DialogFore
-            $ChoiceTwoButton = New-Object System.Windows.Forms.Button
-            $ChoiceTwoButton.Text = 'No'
-            $ChoiceTwoButton.Location = New-Object System.Drawing.Point(480, 205)
-            $ChoiceTwoButton.Size = New-Object System.Drawing.Size(70, 30)
-            $ChoiceTwoButton.DialogResult = [System.Windows.Forms.DialogResult]::No
-            $ChoiceTwoButton.FlatStyle = 'Flat'
-            $ChoiceTwoButton.BackColor = $DialogBack
-            $ChoiceTwoButton.ForeColor = $DialogFore
-            $ChoiceCancelButton = New-Object System.Windows.Forms.Button
-            $ChoiceCancelButton.Text = 'Cancel'
-            $ChoiceCancelButton.Location = New-Object System.Drawing.Point(560, 205)
-            $ChoiceCancelButton.Size = New-Object System.Drawing.Size(70, 30)
-            $ChoiceCancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-            $ChoiceCancelButton.FlatStyle = 'Flat'
-            $ChoiceCancelButton.BackColor = $DialogBack
-            $ChoiceCancelButton.ForeColor = $DialogFore
-            $ChoiceForm.Controls.AddRange(@($ChoiceOneButton, $ChoiceTwoButton, $ChoiceCancelButton))
-            $ChoiceForm.CancelButton = $ChoiceCancelButton
-            return $ChoiceForm.ShowDialog()
         }
         function Install-ALOSImageTools {
             $PSExePath = $PSExe -replace '\\', '\\'
@@ -4582,7 +4665,7 @@ Windows Registry Editor Version 5.00
         Width="800"
         Height="500"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanResize"
+        ResizeMode="NoResize"
         Background="{DynamicResource Bg}"
         Foreground="{DynamicResource TextBrushWhite}"
         FontFamily="Segoe UI"
@@ -4711,7 +4794,7 @@ Windows Registry Editor Version 5.00
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="/===========================\"
+                <TextBlock Text="/==========================\"
                            Foreground="Magenta"
                            FontSize="16"
                            Margin="0,0,0,4" />
@@ -4733,11 +4816,16 @@ Windows Registry Editor Version 5.00
                        FontSize="16"
                        Margin="0,0,0,4" />
             <TextBlock Grid.Row="2"
-                       Text="\===========================/"
+                       Text="\==========================/"
                        Foreground="Yellow"
                        FontSize="16"
                        Margin="0,0,0,14" />
-            <StackPanel Grid.Row="3" Margin="0,0,0,12">
+            <TextBlock Grid.Row="3"
+                       Text="Press Alt F4 to exit."
+                       Foreground="White"
+                       FontSize="16"
+                       Margin="0,0,0,14" />
+            <StackPanel Grid.Row="4" Margin="0,0,0,12">
                 <TextBlock Text="1: Install ALOS Image Tools" Foreground="LightGreen" Margin="0,0,0,4" />
                 <TextBlock Text="2: Uninstall ALOS Image Tools" Foreground="LightCoral" Margin="0,0,0,4" />
                 <TextBlock Text="3: Reinstall with latest registry entries." Foreground="LightSkyBlue" Margin="0,0,0,4" />
@@ -4846,8 +4934,9 @@ Windows Registry Editor Version 5.00
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsucessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
-            $Window.WindowState = [System.Windows.WindowState]::Normal
-            $Window.ResizeMode = [System.Windows.ResizeMode]::CanResize
+            $Window.WindowState = [System.Windows.WindowState]::Maximized
+            $Window.ResizeMode = [System.Windows.ResizeMode]::NoResize
+            $Window.WindowStyle = [System.Windows.WindowStyle]::None
             [void]$Window.ShowDialog()
         } else {
             $Form = New-Object System.Windows.Forms.Form
@@ -4880,7 +4969,7 @@ Windows Registry Editor Version 5.00
             $OptionLabel1 = New-Label '1: Install ALOS Image Tools' 40 124 ([System.Drawing.Color]::LightGreen)
             $OptionLabel2 = New-Label '2: Uninstall ALOS Image Tools' 40 154 ([System.Drawing.Color]::LightCoral)
             $OptionLabel3 = New-Label '3: Reinstall with latest registry entries.' 40 184 ([System.Drawing.Color]::LightSkyBlue)
-            $PromptLabel = New-Label 'Please make a decision' 24 264 ([System.Drawing.Color]::Gainsboro)
+            $PromptLabel = New-Label 'Press Alt F4 to exit.' 24 264 ([System.Drawing.Color]::Gainsboro)
             $InstallButton = New-Object System.Windows.Forms.Button
             $InstallButton.Text = 'Install'
             $InstallButton.Location = New-Object System.Drawing.Point(40, 310)
@@ -4910,8 +4999,8 @@ Windows Registry Editor Version 5.00
         }
     }
     default {
-        # We can never get here. Pratically dead code due to ValidateSet at the top.
-        Error "Unknown operation: $Op"
+        # This can be reached if the casing of valid operations are wrong.
+        Error "Unknown operation: ${Op}`r`n`r`nDid you use the correct casing?"
         Exit 9009
     }
 }
@@ -4922,5 +5011,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 4926
+    Line count: 5015
 #>
