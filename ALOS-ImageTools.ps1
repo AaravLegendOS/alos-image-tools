@@ -20,11 +20,12 @@
         You should have received a copy of the GNU Affero General Public License
         along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-        Wimlib-imagex.exe is licensed under the GNU General Public License version 3
-        or any later version. That is, for Windows builds. This program just calls a
-        compiled exe AS A SEPARATE PROCESS even though the code of wimlib-imagex can
+        Wimlib-imagex.exe is licensed under the GNU General Public License version
+        3 or any later version. That is, for Windows builds. This program just calls
+        a compiled exe AS A SEPARATE PROCESS even though the code of wimlib-imagex can
         be combined. Aarav Katariya chose not to combine them to avoid a combined work
-        which will have to be Affero GPL licensed (because AGPL is stricter than GPL).
+        except, the AGPL code stays AGPL and the GPL code stays GPL without needing to
+        relicense the combined work as stated in the GNU Affero General Public License.
     }
     Feel free to ask me why I use 2023-20XX instead of only 20XX.
 .PARAMETER Op
@@ -158,7 +159,7 @@
     Read a wim file and change it's whole image metadata to your liking.
 .NOTES
     Author: Aarav Katariya
-    Version: 1.0
+    Version: 1.0.0.0
     Dependencies:
         - Windows PowerShell 5.1 (Built-in), NOT PowerShell Core (separate app). (To minimise dependencies.)
         - wimlib-imagex.exe - Required for all WIM/ESD operations.
@@ -171,115 +172,116 @@
         0 - Operation completed successfully.
         1 - Operation failed.
         2 - Relaunched as admin (normal).
-        9009 - Unknown operation specified.
+        9009 - Unknown operation specified. Usually incorrect casing.
     Credits:
         Igor Pavlov - 7-Zip
-        Eric Biggers - wimlib-imagex
+        Eric Biggers - Wimlib ImageX
         abbodi1406 - ESD Decryptor (Used as ISO creator)
     Additional Notes:
         Official ESD downloads (limited) - https://worproject.com/esd
         Official ESD downloads (complete) - https://files.rg-adguard.net/version/83fb91c9-107c-bdda-1ffc-2952d753a472?dark=1
         The program requires Windows PowerShell 5.1 not PowerShell Core 6 or 7 and must run with administrator privileges for all operations. If you do not, I will relaunch as admin.
-=========================================================================================
+==========================================================================================
                      Every Windows PowerShell 5.1 type and accelerator.
-                        This will be highly useful for you to know.
-=========================================================================================
-Accelerator                  Full .NET/C# Type
------------                  ------------------
-ValidateScript               System.Management.Automation.ValidateScriptAttribute
-ValidateSet                  System.Management.Automation.ValidateSetAttribute
-ValidateRange                System.Management.Automation.ValidateRangeAttribute
-ValidateNotNullOrEmpty       System.Management.Automation.ValidateNotNullOrEmptyAttribute
-ValidatePattern              System.Management.Automation.ValidatePatternAttribute
-ValidateTrustedData          System.Management.Automation.ValidateTrustedDataAttribute
-ipaddress                    System.Net.IPAddress
-DscLocalConfigurationManager System.Management.Automation.DscLocalConfigurationManagerAttribute
-void                         System.Void
-ValidateUserDrive            System.Management.Automation.ValidateUserDriveAttribute
-version                      System.Version
-ValidateNotNull              System.Management.Automation.ValidateNotNullAttribute
-timespan                     System.TimeSpan
-uint16                       System.UInt16
-securestring                 System.Security.SecureString
-cultureinfo                  System.Globalization.CultureInfo
-bigint                       System.Numerics.BigInteger
-uint32                       System.UInt32
-ValidateDrive                System.Management.Automation.ValidateDriveAttribute
-ValidateLength               System.Management.Automation.ValidateLengthAttribute
-ValidateCount                System.Management.Automation.ValidateCountAttribute
-uint64                       System.UInt64
-uri                          System.Uri
-WildcardPattern              System.Management.Automation.WildcardPattern
-runspacefactory              System.Management.Automation.Runspaces.RunspaceFactory
-runspace                     System.Management.Automation.Runspaces.Runspace
-powershell                   System.Management.Automation.PowerShell
-type                         System.Type
-psmoduleinfo                 System.Management.Automation.PSModuleInfo
-initialsessionstate          System.Management.Automation.Runspaces.InitialSessionState
-psaliasproperty              System.Management.Automation.PSAliasProperty
-psvariableproperty           System.Management.Automation.PSVariableProperty
-psnoteproperty               System.Management.Automation.PSNoteProperty
-psscriptmethod               System.Management.Automation.PSScriptMethod
-psscriptproperty             System.Management.Automation.PSScriptProperty
-psvariable                   System.Management.Automation.PSVariable
-CimSession                   Microsoft.Management.Infrastructure.CimSession
+   This will be highly useful for you to know. (Some types have multiple accelerators!)
+==========================================================================================
+/-----------------------------------------------\
+| Accelerator ||||||||||||||| Full .NET/C# Type |
+\-----------------------------------------------/
 adsi                         System.DirectoryServices.DirectoryEntry
-xml                          System.Xml.XmlDocument
-X509Certificate              System.Security.Cryptography.X509Certificates.X509Certificate
-X500DistinguishedName        System.Security.Cryptography.X509Certificates.X500DistinguishedName
 adsisearcher                 System.DirectoryServices.DirectorySearcher
-mailaddress                  System.Net.Mail.MailAddress
-scriptblock                  System.Management.Automation.ScriptBlock
-wmisearcher                  System.Management.ManagementObjectSearcher
-wmiclass                     System.Management.ManagementClass
-wmi                          System.Management.ManagementObject
-single                       System.Single
-guid                         System.Guid
-float                        System.Single
-double                       System.Double
-DscResource                  System.Management.Automation.DscResourceAttribute
-hashtable                    System.Collections.Hashtable
-long                         System.Int64
-int64                        System.Int64
-int16                        System.Int16
-int                          System.Int32
-int32                        System.Int32
-decimal                      System.Decimal
-AllowNull                    System.Management.Automation.AllowNullAttribute
-ArgumentCompleter            System.Management.Automation.ArgumentCompleterAttribute
-AllowEmptyString             System.Management.Automation.AllowEmptyStringAttribute
 Alias                        System.Management.Automation.AliasAttribute
 AllowEmptyCollection         System.Management.Automation.AllowEmptyCollectionAttribute
+AllowEmptyString             System.Management.Automation.AllowEmptyStringAttribute
+AllowNull                    System.Management.Automation.AllowNullAttribute
+ArgumentCompleter            System.Management.Automation.ArgumentCompleterAttribute
 array                        System.Array
-CmdletBinding                System.Management.Automation.CmdletBindingAttribute
-datetime                     System.DateTime
-char                         System.Char
+bigint                       System.Numerics.BigInteger
 bool                         System.Boolean
 byte                         System.Byte
+char                         System.Char
+cimclass                     Microsoft.Management.Infrastructure.CimClass
+cimconverter                 Microsoft.Management.Infrastructure.CimConverter
 ciminstance                  Microsoft.Management.Infrastructure.CimInstance
-ref                          System.Management.Automation.PSReference
-PSTypeNameAttribute          System.Management.Automation.PSTypeNameAttribute
+CimSession                   Microsoft.Management.Infrastructure.CimSession
+cimtype                      Microsoft.Management.Infrastructure.CimType
+CmdletBinding                System.Management.Automation.CmdletBindingAttribute
+cultureinfo                  System.Globalization.CultureInfo
+datetime                     System.DateTime
+decimal                      System.Decimal
+double                       System.Double
+DscLocalConfigurationManager System.Management.Automation.DscLocalConfigurationManagerAttribute
+DscProperty                  System.Management.Automation.DscPropertyAttribute
+DscResource                  System.Management.Automation.DscResourceAttribute
+float                        System.Single
+guid                         System.Guid
+hashtable                    System.Collections.Hashtable
+initialsessionstate          System.Management.Automation.Runspaces.InitialSessionState
+int                          System.Int32
+int16                        System.Int16
+int32                        System.Int32
+int64                        System.Int64
+ipaddress                    System.Net.IPAddress
+IPEndpoint                   System.Net.IPEndPoint
+long                         System.Int64
+mailaddress                  System.Net.Mail.MailAddress
+NullString                   System.Management.Automation.Language.NullString
+ObjectSecurity               System.Security.AccessControl.ObjectSecurity
+OutputType                   System.Management.Automation.OutputTypeAttribute
+Parameter                    System.Management.Automation.ParameterAttribute
+PhysicalAddress              System.Net.NetworkInformation.PhysicalAddress
+powershell                   System.Management.Automation.PowerShell
+psaliasproperty              System.Management.Automation.PSAliasProperty
+pscredential                 System.Management.Automation.PSCredential
+pscustomobject               System.Management.Automation.PSObject
+PSDefaultValue               System.Management.Automation.PSDefaultValueAttribute
+pslistmodifier               System.Management.Automation.PSListModifier
+psmoduleinfo                 System.Management.Automation.PSModuleInfo
+psnoteproperty               System.Management.Automation.PSNoteProperty
+psobject                     System.Management.Automation.PSObject
 psprimitivedictionary        System.Management.Automation.PSPrimitiveDictionary
-PSObject                     System.Management.Automation.PSObject
-PSCustomObject               System.Management.Automation.PSObject
+psscriptmethod               System.Management.Automation.PSScriptMethod
+psscriptproperty             System.Management.Automation.PSScriptProperty
+PSTypeNameAttribute          System.Management.Automation.PSTypeNameAttribute
+psvariable                   System.Management.Automation.PSVariable
+psvariableproperty           System.Management.Automation.PSVariableProperty
+ref                          System.Management.Automation.PSReference
 regex                        System.Text.RegularExpressions.Regex
+runspace                     System.Management.Automation.Runspaces.Runspace
+runspacefactory              System.Management.Automation.Runspaces.RunspaceFactory
+sbyte                        System.SByte
+scriptblock                  System.Management.Automation.ScriptBlock
+securestring                 System.Security.SecureString
+single                       System.Single
+string                       System.String
 SupportsWildcards            System.Management.Automation.SupportsWildcardsAttribute
 switch                       System.Management.Automation.SwitchParameter
-string                       System.String
-DscProperty                  System.Management.Automation.DscPropertyAttribute
-sbyte                        System.SByte
-pslistmodifier               System.Management.Automation.PSListModifier
-IPEndpoint                   System.Net.IPEndPoint
-NullString                   System.Management.Automation.Language.NullString
-cimconverter                 Microsoft.Management.Infrastructure.CimConverter
-cimclass                     Microsoft.Management.Infrastructure.CimClass
-cimtype                      Microsoft.Management.Infrastructure.CimType
-OutputType                   System.Management.Automation.OutputTypeAttribute
-pscredential                 System.Management.Automation.PSCredential
-PSDefaultValue               System.Management.Automation.PSDefaultValueAttribute
-PhysicalAddress              System.Net.NetworkInformation.PhysicalAddress
-ObjectSecurity               System.Security.AccessControl.ObjectSecurity
-Parameter                    System.Management.Automation.ParameterAttribute
+timespan                     System.TimeSpan
+type                         System.Type
+uint16                       System.UInt16
+uint32                       System.UInt32
+uint64                       System.UInt64
+uri                          System.Uri
+ValidateCount                System.Management.Automation.ValidateCountAttribute
+ValidateDrive                System.Management.Automation.ValidateDriveAttribute
+ValidateLength               System.Management.Automation.ValidateLengthAttribute
+ValidateNotNull              System.Management.Automation.ValidateNotNullAttribute
+ValidateNotNullOrEmpty       System.Management.Automation.ValidateNotNullOrEmptyAttribute
+ValidatePattern              System.Management.Automation.ValidatePatternAttribute
+ValidateRange                System.Management.Automation.ValidateRangeAttribute
+ValidateScript               System.Management.Automation.ValidateScriptAttribute
+ValidateSet                  System.Management.Automation.ValidateSetAttribute
+ValidateTrustedData          System.Management.Automation.ValidateTrustedDataAttribute
+ValidateUserDrive            System.Management.Automation.ValidateUserDriveAttribute
+version                      System.Version
+void                         System.Void
+WildcardPattern              System.Management.Automation.WildcardPattern
+wmi                          System.Management.ManagementObject
+wmiclass                     System.Management.ManagementClass
+wmisearcher                  System.Management.ManagementObjectSearcher
+X500DistinguishedName        System.Security.Cryptography.X509Certificates.X500DistinguishedName
+X509Certificate              System.Security.Cryptography.X509Certificates.X509Certificate
+xml                          System.Xml.XmlDocument
 =========================================================================================
                           End Of Type And Accelerator Documentation
 =========================================================================================
@@ -287,6 +289,13 @@ Parameter                    System.Management.Automation.ParameterAttribute
 #Requires -PSEdition Desktop
 #Requires -Version 5.1
 #Requires -Modules DISM
+#Requires -Assembly System.Windows.Forms
+#Requires -Assembly System.Drawing
+#Requires -Assembly PresentationFramework
+#Requires -Assembly PresentationCore
+#Requires -Assembly WindowsBase
+#Requires -Assembly System.Xml
+# Treat like a proper PowerShell cmdlet. Gives this program common parameters like -Verbose, -Debug, etc.
 [CmdletBinding()]
 param(
     [Parameter(HelpMessage="What operation do you want to do?")]
@@ -299,17 +308,11 @@ param(
     [switch]$WPFUI,
     [switch]$NoHashes
 )
-# Adjust execution policy if script execution policy is not 'Bypass'.
-if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
-Import-Module DISM -Force
-# Define the working directory. It will determine all the sub-locations.
-$WorkingDir = $PSScriptRoot
+# Clear the console screen.
 Clear-Host
-# Set a helpful message if you choose a resource-intensive operation.
-$CompressWarn = "This will use all your system resources. It can take up to several hours depending on your system. Your cpu will remain at 100% usage."
 # Check for administrator privelges.
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+$Principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     # Relaunch as administrator otherwise.
     # Ensure we build a relaunch command.
     $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
@@ -319,7 +322,148 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
-# Did you know you can put comments in a hashtable?
+# Add assemblies and types for GUI.
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+if ($WPFUI) {
+    Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+    if ([System.Windows.Application]::Current -eq $null) {
+        $app = [System.Windows.Application]::new()
+        $app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
+        $script:WpfApp = $app
+    } else {
+        $script:WpfApp = [System.Windows.Application]::Current
+    }
+}
+# Enable visual styles for Windows Forms.
+[System.Windows.Forms.Application]::EnableVisualStyles()
+# Function to present a question to the user.
+function Question {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Message,
+        [ValidateSet("YesNo","YesNoCancel","OKCancel")]
+        [string]$Buttons = "YesNo",
+        [ValidateSet("Information","Info","Warning","Warn","Error","Question")]
+        [string]$Type = "Question"
+    )
+    if ($WPFUI) { return [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) } else { return [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) }
+}
+# Function to show error message and exit.
+function Error($Message) {
+    $Host.UI.RawUI.WindowTitle = "$Op Failed On $Path" # Set the Window Title to say failed.
+    if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null }
+    exit 1
+}
+# Function to show warning message.
+function Warn($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
+# Function to show information message.
+function Info($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
+# Function to set-progress. It depends on the Write-Progress cmdlet!
+function Set-Progress {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Activity,
+        [Parameter(Mandatory)]
+        [string]$Status,
+        [Parameter(Mandatory)]
+        [ValidateRange(0,100)]
+        [int]$PercentComplete,
+        [Parameter(Mandatory=$false)]
+        [uint16]$ProgID = 1
+    )
+    # Clamp values to between 0 and 100.
+    if ($PercentComplete -lt 0) { $PercentComplete = 0 } # Ensure no values below 0.
+    if ($PercentComplete -gt 100) { $PercentComplete = 100 } # Ensure no values above 100.
+    # Then write that progress.
+    Write-Progress -Id $ProgID -Activity $Activity -Status $Status -PercentComplete $PercentComplete
+}
+# Function to complete the progress from Set-Progress.
+function Complete-Progress {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Activity,
+        [Parameter(Mandatory=$false)]
+        [uint16]$ProgID = 1
+    )
+    Write-Progress -Id $ProgID -Activity $Activity -Status "Completed" -PercentComplete 100 -Completed
+}
+# Obtain and validate architecture.
+$AArch = [int](Get-CimInstance Win32_Processor).Architecture # AArch is temp variable in this case.
+$Arch = if ($Aarch -eq 9) { "AMD64" } elseif ($Aarch -eq 12) { "ARM64" } else { "UNSUPPORTED" } # Arch is out permanent variable.
+$AArch = $null # Clear the AArch variable.
+if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
+# Validate Arguments.
+if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. You passed `"-InstallingWindows`" but forgot to use the `"Apply`" operation. Very silly mistake." }
+if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
+# Adjust execution policy if script execution policy is not 'Bypass'.
+if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
+Import-Module DISM -Force
+# Define the working directory. It will determine all the sub-locations.
+$WorkingDir = $PSScriptRoot
+# Set a helpful message if you choose a resource-intensive operation.
+$CompressWarn = "This will use all your system resources. It can take up to several hours depending on your system. Your cpu will remain at 100% usage."
+# Define version.
+$CurrentVersion = [Version]"1.0.0.0"
+$User_SevenZ = "$(Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip | Select-Object -ExpandProperty InstallLocation)7z.exe"
+Write-Host "Checking for updates..." -ForegroundColor Yellow
+# Create this function before we check for updates.
+function Acquire-LatestALOSImageTools {
+    param(
+        [string]$User = "AaravLegendOS",
+        [string]$Repo = "alos-image-tools"
+    )
+    # Ping the GitHub API to get json data before converting it from json.
+    $Json = Invoke-WebRequest -Uri "https://api.github.com/repos/${User}/${Repo}/git/refs/tag" -UseBasicParsing | ConvertFrom-Json
+    # And then filter out the reference until only the tag version is recieved.
+    $Version = $Json[-1].ref -replace 'refs/tags/', ''
+    return $Version # Finally, return the data to the main routine.
+}
+# And this function for using the user's 7-Zip.
+function Seven-Zip {
+    param(
+        [Parameter(Mandatory)]
+        [string]$SZPath,
+        [Parameter(Mandatory)]
+        [array]$Arguments,
+        [switch]$IncludeExitCode
+    )
+    $Arguments += if ("-bsp1" -notin $Arguments) { "-bsp1" } # Force progress reporting to power the progress bar.
+    $SevenZ = Join-Path "$Path" "7z.exe"
+    $Output = New-Object System.Collections.Generic.List[string]
+    # Stream the output of 7-Zip.
+    & $SevenZ @Arguments 2>&1 | ForEach-Object {
+        $Line = $_.ToString()
+        $Output.Add($Line)
+        if ($Line -match '^\s*(\d{1,3})%') {
+            $Percent = [int]$Matches[1]
+            & $SetProgress "7-Zip says:" "Extracting files... (${Percent}%)" $Percent
+        }
+    }
+    if ($IncludeExitCode) { return $LASTEXITCODE }
+}
+$NewestVersion = Acquire-LatestALOSImageTools
+# Compare version and see if update needed. (Needs user's 7-Zip to work.)
+if (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ")) {
+    $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
+    if ($UpdateChoice -eq "Yes") {
+        Clear-Host
+        Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
+        Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.7z" -OutFile "${WorkingDir}\ALOS-ImageTools.7z"
+        $Code = Seven-Zip -SZPath "$User_SevenZ" -Arguments @('x','-y','-r','-aoa',"-o${WorkingDir}","${WorkingDir}\ALOS-ImageTools.7z")
+        if ($Code -lt 2) {
+            Clear-Host
+            Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
+            $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
+            if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
+            if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
+            if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
+            Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
+            Exit 0
+        }
+    } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
+}
+# Did you know you can put comments in a hashtable and a powershell custom object?
+# You probably did know this fact but if not, then this is highly useful to learn!
 [HashTable]$WindowsEditionIDs = @{
     # This is a list of literally ALL edition IDs for Windows Vista - Windows 11.
     # Windows XP and earlier are excluded because they do not use the WIM format.
@@ -331,8 +475,6 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "Enterprise"
         "EnterpriseN"
         "EnterpriseE"
-        "Starter"
-        "StarterN"
         "HomeBasic"
         "HomeBasicN"
         "HomePremium"
@@ -366,6 +508,8 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "IoTEnterpriseSK"
         "ServerRdsh"
         "PPIPro"
+        "Cloud"
+        "CloudN"
         "CloudEdition"
         "CloudEditionN"
         "ProfessionalStudent"
@@ -434,8 +578,13 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "MediumBusinessServerSecurity"
     )
     # A list of banned edition ID's that will be blocked from use.
-    # Primarily industrial editions but also include evaluation editions.
-    Banned = @(
+    # Primarily industrial editions but also include evaluation and
+    # starter editions. Evaluation editions are only for ninety days,
+    # industrial editions are not for the general public and starter
+    # editions are x86 only and are limited below the 4GB x86 limit.
+    # Windows XP Starter is limited to 512MB RAM, Vista Starter is
+    # limited to 1GiB RAM and Windows 7 Starter is limited to 2GB RAM.
+    Blacklist = @(
         "IoTUAP"
         "IoTUAPCommercial"
         "EmbeddedIndustry"
@@ -463,8 +612,11 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         "ServerStorageStandardEval"
         "ServerStorageWorkgroupEval"
         "ServerStorageExpressEval"
+        "Starter"
+        "StarterN"
     )
 }
+$GithubRepo = 'https://github.com/AaravLegendOS/alos-image-tools'
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) {
     # Create an Affero GPL notice.
     $AGPLNotice = @'
@@ -491,39 +643,29 @@ Wimlib-imagex.exe is licensed under the GNU General Public License version
 3 or any later version. That is, for Windows builds. This program just calls
 a compiled exe AS A SEPARATE PROCESS even though the code of wimlib-imagex can
 be combined. Aarav Katariya chose not to combine them to avoid a combined work
-which will have to be Affero GPL licensed (because AGPL is stricter than GPL).
+except, the AGPL code stays AGPL and the GPL code stays GPL without needing to
+relicense the combined work as stated in the GNU Affero General Public License.
+
+**This legal notice must be displayed under Section 0 and 5 of the GNU AGPL.**
 '@
     # And then print it as well as a ten second delay.
+    Clear-Host
     Write-Host $AGPLNotice -ForegroundColor Yellow # Ask me why I use 2023-20XX instead of just 20XX?
     # But if we have WPFUI enabled, say this extra message.
     if ($WPFUI) { Write-Host 'If you want to exit setup, you need to press Alt F4.' }
     Start-Sleep -Seconds 10
 } else {
     # Show the operation to the user.
-    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}.`r`n" # CRLF is Windows, LF is Unix and CR is Macintosh.
+    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}.`r`n" # CRLF (\r\n / `r`n) is Windows, LF (\n / `r`n) is Unix and CR (\r / `r) is Macintosh.
 }
-# Add assemblies and types for GUI.
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-if ($WPFUI) {
-    Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
-    if ([System.Windows.Application]::Current -eq $null) {
-        $app = [System.Windows.Application]::new()
-        $app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
-        $script:WpfApp = $app
-    } else {
-        $script:WpfApp = [System.Windows.Application]::Current
-    }
-}
-# Enable visual styles for Windows Forms.
-[System.Windows.Forms.Application]::EnableVisualStyles()
 # Add the type for WIMGAPI use.
 if (-not ('ALOSImageTools.NativeWimg' -as [type])) {
-    $references = @(
+    $References = @(
         [System.Object].Assembly.Location
         [System.Runtime.InteropServices.Marshal].Assembly.Location
         [System.Xml.XmlDocument].Assembly.Location
     )
-    Add-Type -ReferencedAssemblies $references -TypeDefinition @'
+    Add-Type -ReferencedAssemblies $References -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -991,61 +1133,6 @@ namespace ALOSImageTools
 }
 '@
 }
-# Function to present a question to the user.
-function Question {
-    param(
-        [Parameter(Mandatory)]
-        [string]$msg,
-        [ValidateSet("YesNo","YesNoCancel","OKCancel")]
-        [string]$Buttons = "YesNo",
-        [ValidateSet("Information","Warning","Error","Question")]
-        [string]$Type = "Question"
-    )
-    if ($WPFUI) {
-        return [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',$Buttons,$Type)
-    } else {
-        return [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',$Buttons,$Type)
-    }
-}
-# Function to show error message and exit.
-function Error($msg) {
-    $Host.UI.RawUI.WindowTitle = "$Op Failed On $Path" # Set the Window Title to say failed.
-    if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null }
-    exit 1
-}
-# Function to show warning message.
-function Warn($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
-# Function to show information message.
-function Info($msg) { if ($WPFUI) { [System.Windows.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($msg,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
-# Function to set-progress. It depends on the Write-Progress cmdlet!
-function Set-Progress {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Activity,
-        [Parameter(Mandatory)]
-        [string]$Status,
-        [Parameter(Mandatory)]
-        [ValidateRange(0,100)]
-        [int]$PercentComplete,
-        [Parameter(Mandatory=$false)]
-        [uint16]$ProgID = 1
-    )
-    # Clamp values to between 0 and 100.
-    if ($PercentComplete -lt 0) { $PercentComplete = 0 } # Ensure no values below 0.
-    if ($PercentComplete -gt 100) { $PercentComplete = 100 } # Ensure no values above 100.
-    # Then write that progress.
-    Write-Progress -Id $ProgID -Activity $Activity -Status $Status -PercentComplete $PercentComplete
-}
-# Function to complete the progress from Set-Progress.
-function Complete-Progress {
-    param(
-        [Parameter(Mandatory)]
-        [string]$Activity,
-        [Parameter(Mandatory=$false)]
-        [uint16]$ProgID = 1
-    )
-    Write-Progress -Id $ProgID -Activity $Activity -Status "Completed" -PercentComplete 100 -Completed
-}
 # Create a dark mode function that blacks out the windows of Windows Forms GUI's.
 function Enable-DarkMode {
     param([System.Windows.Forms.Control]$ControlRoot)
@@ -1362,10 +1449,10 @@ function Pick-Index {
         [switch]$MultipleImages
     )
     $raw = & $wimlib info $Path 2>&1
-    if ($LASTEXITCODE -ne 0) { Error "Failed to get image info.`n$raw" }
+    if ($LASTEXITCODE -ne 0) { Error "Failed to get image info.`r`n$raw" }
     $entries = @()
     $current = $null
-    foreach ($line in $raw -split "`r?`n") {
+    foreach ($line in $raw -split "`r?`r`n") {
         if ($line -match '^\s*Index\s*:\s*(\d+)') {
             $current = [PSCustomObject]@{
                 Index = [int]$matches[1]
@@ -1375,21 +1462,21 @@ function Pick-Index {
         }
         elseif ($current -and $line -match '^\s*Name\s*:\s*(.+)') { $current.Name = $matches[1].Trim() }
     }
-    if (-not $entries) { Error "No images found in:`n$Path" }
+    if (-not $entries) { Error "No images found in:`r`n$Path" }
     if (-not $MultipleImages -and $entries.Count -eq 1) { return [int]$entries[0].Index }
-    $form = New-Object Windows.Forms.Form
-    $form.Text = if ($MultipleImages) { "Select one or more image indices using Ctrl+Click." } else { "Select an image index" }
-    $form.Width = 800
-    $form.Height = 600
-    $form.StartPosition = 'CenterScreen'
-    $form.MinimizeBox = $false
-    $form.MaximizeBox = $false
-    $form.FormBorderStyle = 'FixedDialog'
-    $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
-    $form.Padding = '8,8,8,8'
-    $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $Form = New-Object Windows.Forms.Form
+    $Form.Text = if ($MultipleImages) { "Select one or more image indices using Ctrl+Click." } else { "Select an image index" }
+    $Form.Width = 800
+    $Form.Height = 600
+    $Form.StartPosition = 'CenterScreen'
+    $Form.MinimizeBox = $false
+    $Form.MaximizeBox = $false
+    $Form.FormBorderStyle = 'FixedDialog'
+    $Form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
+    $Form.Padding = '8,8,8,8'
+    $Form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $ThemeControl = Is-LightModeOn
-    if ($ThemeControl.Apps -or $ThemeControl.System) { Enable-DarkMode $form }
+    if ($ThemeControl.Apps -or $ThemeControl.System) { Enable-DarkMode $Form }
     $lbl = New-Object Windows.Forms.Label
     $lbl.Text = if ($MultipleImages) { "Select one or more image indices using Ctrl+Click." }
     else { "Select an image index" }
@@ -1397,7 +1484,7 @@ function Pick-Index {
     $lbl.Dock = 'Bottom'
     $lbl.Padding = '4,4,4,6'
     $lbl.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
-    $lbl.ForeColor = $form.ForeColor
+    $lbl.ForeColor = $Form.ForeColor
     $lbl.BackColor = 'Transparent'
     $list = New-Object Windows.Forms.ListBox
     $list.Dock = 'Fill'
@@ -1413,7 +1500,7 @@ function Pick-Index {
     $panel.Dock = 'Bottom'
     $panel.Height = 46
     $panel.Padding = '6,6,6,6'
-    $panel.BackColor = $form.BackColor
+    $panel.BackColor = $Form.BackColor
     $IsExportOperation = $Op -in @('ExportWIM', 'ExportESD')
     if ($IsExportOperation) {
         $ExportAll = New-Object Windows.Forms.Button
@@ -1437,8 +1524,8 @@ function Pick-Index {
     $panel.Controls.Add($cancel)
     if ($IsExportOperation) { $panel.Controls.Add($ExportAll) }
     $panel.Controls.Add($ok)
-    $form.AcceptButton = $ok
-    $form.CancelButton = $cancel
+    $Form.AcceptButton = $ok
+    $Form.CancelButton = $cancel
     $ThemeControl = Is-LightModeOn
     if ($ThemeControl.Apps) {
         Enable-DarkMode $panel
@@ -1452,8 +1539,8 @@ function Pick-Index {
         $script:ExportAllChosen = $false
         $ExportAll.Add_Click({
             $script:ExportAllChosen = $true
-            $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
-            $form.Close()
+            $Form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $Form.Close()
         })
     }
     else { $script:ExportAllChosen = $false }
@@ -1473,13 +1560,13 @@ function Pick-Index {
     })
     $list.Add_DoubleClick({
         if ($list.SelectedIndex -ge 0) {
-            $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
-            $form.Close()
+            $Form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $Form.Close()
         }
     })
-    $form.Controls.Add($lbl)
-    $form.Controls.Add($panel)
-    $form.Controls.Add($list)
+    $Form.Controls.Add($lbl)
+    $Form.Controls.Add($panel)
+    $Form.Controls.Add($list)
     $panel.PerformLayout()
     $panel.Refresh()
     $spacing = 8
@@ -1492,7 +1579,7 @@ function Pick-Index {
     }
     else { $ok.Left = $cancel.Left - $ok.Width - $spacing }
     $ok.Top = 8
-    $res = $form.ShowDialog()
+    $res = $Form.ShowDialog()
     if ($res -ne [System.Windows.Forms.DialogResult]::OK) { Error "No index selected." }
     if ($IsExportOperation -and $script:ExportAllChosen) { return @($entries | ForEach-Object { [int]$_.Index }) }
     if ($MultipleImages) {
@@ -1531,7 +1618,7 @@ function Get-CRC {
     $exit = $LASTEXITCODE
     if ($exit -ne 0) { Error "An error occurred getting the CRC hash. (${exit})`r`nOutput:`r`n$raw" }
     $hash = $null
-    $lines = $raw -split "`r?`n"
+    $lines = $raw -split "`r?`r`n"
     # Regex matching.
     foreach ($line in $lines) {
         if ($line -match "$label\s+for data:\s*([0-9A-Fa-f]+)") {
@@ -1551,7 +1638,7 @@ function Get-CRC {
         $m = [regex]::Match($raw, "([0-9A-Fa-f]{$expectedLen})")
         if ($m.Success) { $hash = $m.Groups[1].Value }
     }
-    if (-not $hash) { Error "Errored to parse $label from output.`nOutput:`n$raw" }
+    if (-not $hash) { Error "Errored to parse $label from output.`r`nOutput:`r`n$raw" }
     return $hash.ToUpper()
 }
 # [SPECIAL] Function to mimick Coalesce from PowerShell 7.
@@ -1631,7 +1718,7 @@ function Find-Executable {
         if ([IO.Path]::IsPathRooted($c) -eq $false -and $c -match '\.exe$') {
             $tryPf = Join-Path $env:ProgramFiles $c
             if (Test-Path $tryPf) { return (Resolve-Path -LiteralPath $tryPf).Path }
-            $tryPf2 = Join-Path $WorkingDir "bin\$c"
+            $tryPf2 = Join-Path $WorkingDir "bin\$Arch\$c"
             if (Test-Path $tryPf2) { return (Resolve-Path -LiteralPath $tryPf2).Path }
         }
     }
@@ -1784,7 +1871,7 @@ function Extract-ISO {
         [Parameter(Mandatory)]
         [scriptblock]$Error
     )
-    $sevenz = Join-Path $WorkingDir "bin\7z.exe"
+    $sevenz = Join-Path $WorkingDir "bin\$Arch\7z.exe"
     if (-not (Test-Path -LiteralPath $sevenz)) { $sevenz = "$env:ProgramFiles\7-Zip\7z.exe" }
     if (-not (Test-Path -LiteralPath $sevenz)) {
         & $Error "7-Zip does not exist on host system."
@@ -1812,13 +1899,13 @@ function Extract-ISO {
     $exit = $LASTEXITCODE
     if ($exit -ne 0) {
         & $SetProgress $Op "Extraction failed" 100
-        & $Error "Extraction failed (exit $exit).`nOutput:`n$($raw -join "`r`n")"
+        & $Error "Extraction failed (exit $exit).`r`nOutput:`r`n$($raw -join "`r`n")"
         return
     }
     $found = Get-ChildItem -Path $ImgDir -Recurse -Filter "*.$Extension" -File -ErrorAction SilentlyContinue
-    $msg = if ($found -and $found.Count -gt 0) { "Extraction complete.`nFiles extracted to:`n$ImgDir`n`nFound $($found.Count) .$Extension file(s)." } else { "Extraction complete but no .$Extension files were found inside the image.`nOutput folder:`n$ImgDir" }
+    $Message = if ($found -and $found.Count -gt 0) { "Extraction complete.`r`nFiles extracted to:`r`n$ImgDir`r`n`r`nFound $($found.Count) .$Extension file(s)." } else { "Extraction complete but no .$Extension files were found inside the image.`r`nOutput folder:`r`n$ImgDir" }
     & $CompleteProgress $Op
-    & $Info $msg
+    & $Info $Message
 }
 # [NEW] Function to call wimlib-imagex.exe and show a progress bar.
 function Process-Container {
@@ -2132,7 +2219,7 @@ $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim('"'))
 $Host.UI.RawUI.WindowTitle = "$Op In Progress On $Path" # Set the Window Title text.
 $base = [IO.Path]::GetFileNameWithoutExtension($Path) # Get the base filename without the file extension.
 $wimlib = $env:WimManage # Search for the WimManage variable. It may be useful.
-if (-not $wimlib) { $wimlib = Join-Path $WorkingDir "bin\wimlib-imagex.exe" } # If not defined as an environment variable, use the default binary.
+if (-not $wimlib) { $wimlib = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" } # If not defined as an environment variable, use the default binary.
 $testpath = $true
 if ($Op -ceq "SetupProgram" -and $Path -ceq "SetupProgram") {
     $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)"
@@ -2154,8 +2241,8 @@ switch -CaseSensitive ($Op) {
         $description = Read-Host "Enter a description for the index."
         $CapArgs = @('capture', $src, $dest, $name, $description, '--compress=LZX', '--verbose', "--flags=$flags")
         $DestName = [System.IO.Path]::GetFileName($dest)
-        $result = Question -msg "Make the destination WIM bootable?" -Buttons YesNoCancel
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) { $CapArgs += "--boot" } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) { Error "Operation cancelled." }
+        $result = Question -Message "Make the destination WIM bootable?" -Buttons YesNoCancel
+        if ($result -eq "Yes") { $CapArgs += "--boot" } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) { Error "Operation cancelled." }
         Set-Progress "Capture" "Capturing $src to $DestName" 50
         try {
             $null = Process-Container -ExePath $wimlib -Arguments $CapArgs -Activity "Capture" -Mode "Capture And Export"
@@ -2178,9 +2265,9 @@ switch -CaseSensitive ($Op) {
         $description = Read-Host "Enter a description for the index."
         $AppendArgs = @('append', $src, $wimfile, $name, $description, '--compress=LZX', '--verbose', "--flags=$flags")
         $WimName = [System.IO.Path]::GetFileName($wimfile)
-        $result = Question -msg "Is the target WIM a boot image?" -Buttons YesNoCancel
+        $result = Question -Message "Is the target WIM a boot image?" -Buttons YesNoCancel
         $bootwim = $false
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        if ($result -eq "Yes") {
             $AppendArgs += "--boot"
             $bootwim = $true
         } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
@@ -2195,7 +2282,7 @@ switch -CaseSensitive ($Op) {
         }
         $out = $wimfile + "new"
         $esd = Question "Do you want to convert the wimfile to a smaller ESD format? It is resource-intensive though."
-        if ($esd -eq [System.Windows.Forms.DialogResult]::Yes) {
+        if ($esd -eq "Yes") {
              Clear-Host
              $final = [IO.Path]::GetFileNameWithoutExtension($wimfile)
              $OptArgs = @('export', $wimfile, 'all', ${final}.esd, '--compress=LZMS', '--solid')
@@ -2240,12 +2327,11 @@ switch -CaseSensitive ($Op) {
             Mount-WindowsImage -ImagePath $Path -Index $idx -Path $mnt -ErrorAction Stop
         } catch {
             Set-Progress "Mount" "Mount failed" 100
-            Error "Mount failed.`n$($_.Exception.Message)"
+            Error "Mount failed.`r`n$($_.Exception.Message)"
         }
         Set-Progress "Mount" "Mounted - waiting for user to unmount" 70
-        $result = Question -msg "The image has mounted. You can make changes to the image at:`r`n${mnt}.`r`nWhen you have finished, return to this message box and choose if you want to save or discard.
-`r`nYes = Save`r`nNo = Discard" -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $result = Question -Message "The image has mounted. You can make changes to the image at:`r`n${mnt}.`r`nWhen you have finished, return to this message box and choose if you want to save or discard.`r`nYes = Save`r`nNo = Discard" -Buttons YesNo
+        if ($result -eq "Yes") {
             Set-Progress "Mount" "Unmounting and saving changes." 90
             try {
                 Dismount-WindowsImage -Path $mnt -Save -ErrorAction Stop
@@ -2280,8 +2366,8 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -msg "Should the exported WIM be marked bootable?" -Buttons YesNoCancel
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $result = Question -Message "Should the exported WIM be marked bootable?" -Buttons YesNoCancel
+        if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported WIM as bootable."
         } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
@@ -2304,9 +2390,9 @@ switch -CaseSensitive ($Op) {
             }
         }
         if ($failures.Count -gt 0) {
-            $msg = "Export encountered errors.`nErrored indices: $([string]::Join(', ',$failures))`nDestination file: $dest"
+            $Message = "Export encountered errors.`r`nErrored indices: $([string]::Join(', ',$failures))`r`nDestination file: $dest"
             Set-Progress "ExportWIM" "Export finished (with errors)" 100
-            Error $msg
+            Error $Message
         } else {
             if ($bootable) {
                 $out = $dest + 'new'
@@ -2331,7 +2417,7 @@ switch -CaseSensitive ($Op) {
                 Rename-Item -LiteralPath $out -NewName $dest -Force
             }
             Complete-Progress "ExportWIM"
-            Info "All selected indices exported into:`n$dest"
+            Info "All selected indices exported into:`r`n$dest"
         }
     }
     # Export ESD operation. Used to export one or more images to a new esdfile.
@@ -2350,8 +2436,8 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -msg "Should the exported ESD be marked bootable?" -Buttons YesNoCancel
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $result = Question -Message "Should the exported ESD be marked bootable?" -Buttons YesNoCancel
+        if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported ESD as bootable."
         } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
@@ -2376,9 +2462,9 @@ switch -CaseSensitive ($Op) {
             }
         }
         if ($failures.Count -gt 0) {
-            $msg = "Export to temporary WIM completed with errors.`nErrored indices: $([string]::Join(', ',$failures))`nTemporary file: $tmpWim"
+            $Message = "Export to temporary WIM completed with errors.`r`nErrored indices: $([string]::Join(', ',$failures))`r`nTemporary file: $tmpWim"
             Set-Progress "ExportESD" "Export finished (with errors)" 100
-            Warn $msg
+            Warn $Message
             if (Test-Path -LiteralPath $tmpWim) { Remove-Item -LiteralPath $tmpWim -Force -ErrorAction SilentlyContinue }
             Error "One or more ExportESD operations failed (during WIM creation)."
         }
@@ -2394,7 +2480,7 @@ switch -CaseSensitive ($Op) {
         }
         if (Test-Path -LiteralPath $tmpWim) { Remove-Item -LiteralPath $tmpWim -Force -ErrorAction SilentlyContinue }
         Complete-Progress "ExportESD"
-        Info "All selected indices exported into:`n$destEsd"
+        Info "All selected indices exported into:`r`n$destEsd"
     }
     # Get Info operation. Used to obtain technicial properties of a wim, esd or swm file.
     'GetInfo' {
@@ -2413,7 +2499,7 @@ switch -CaseSensitive ($Op) {
             $raw = & $wimlib info $Path 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Write-Progress -Id 1 -Activity "GetInfo" -Status "Getting information failed..." -PercentComplete 100
-                Error "Getting information failed:`n$raw"
+                Error "Getting information failed:`r`n$raw"
             }
             Write-Progress -Id 1 -Activity "GetInfo" -Status "Collecting file info..." -PercentComplete 4
             $FileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
@@ -2459,7 +2545,7 @@ switch -CaseSensitive ($Op) {
                 $sb.AppendLine("You have chosen not to compute the CRC32 hash.") | Out-Null
                 $sb.AppendLine("") | Out-Null
             }
-            $lines = $raw -split "`r?`n"
+            $lines = $raw -split "`r?`r`n"
             $wim = [ordered]@{}
             $images = @()
             $current = $null
@@ -2492,7 +2578,7 @@ switch -CaseSensitive ($Op) {
                             $current['Notes'] = $line.Trim()
                         }
                         else {
-                            $current['Notes'] += "`n" + $line.Trim()
+                            $current['Notes'] += "`r`n" + $line.Trim()
                         }
                     }
                     else {
@@ -2500,7 +2586,7 @@ switch -CaseSensitive ($Op) {
                             $wim['Notes'] = $line.Trim()
                         }
                         else {
-                            $wim['Notes'] += "`n" + $line.Trim()
+                            $wim['Notes'] += "`r`n" + $line.Trim()
                         }
                     }
                 }
@@ -2656,11 +2742,11 @@ switch -CaseSensitive ($Op) {
                 $ButtonPanel.Controls.Add($btnSaveText) | Out-Null
                 $ButtonPanel.Controls.Add($btnSaveJson) | Out-Null
                 $ButtonPanel.Controls.Add($btnCopy) | Out-Null
-                $form.Controls.Add($txt)
-                $form.Controls.Add($buttonPanel)
+                $Form.Controls.Add($txt)
+                $Form.Controls.Add($buttonPanel)
                 $ThemeControl = Is-LightModeOn
                 if ($ThemeControl.Apps -or $ThemeControl.System) {
-                    Enable-DarkMode $form
+                    Enable-DarkMode $Form
                     Enable-DarkMode $txt
                     Enable-DarkMode $buttonPanel
                     Enable-DarkMode $btnSaveText
@@ -2693,20 +2779,20 @@ switch -CaseSensitive ($Op) {
                 Error "Unable to read the selected image's edition information.`r`n`r`n$WIMInfo"
             }
             $EditionID = ''
-            foreach ($line in $WIMInfo -split "`r?`n") {
+            foreach ($line in $WIMInfo -split "`r?`r`n") {
                 if ($line -match '^\s*Flags\s*:\s*(.+?)\s*$') {
                     $EditionID = $matches[1].Trim()
                     break
                 }
             }
-            $BannedMatch = $null
+            $BlacklistMatch = $null
             $ClientMatch = $null
             $ServerMatch = $null
             if (-not [string]::IsNullOrWhiteSpace($EditionID)) {
-                $BannedMatch = @($WindowsEditionIDs.Banned) | Where-Object { $_ -ieq $EditionID } | Select-Object -First 1
-                if ($BannedMatch) {
+                $BlacklistMatch = @($WindowsEditionIDs.Blacklist) | Where-Object { $_ -ieq $EditionID } | Select-Object -First 1
+                if ($BlacklistMatch) {
                     Set-Progress "Apply" "Edition denied" 100
-                    Error "The selected image cannot be applied.`r`n`r`nEdition ID: $EditionID`r`nReason: This is probably an industrial edition."
+                    Error "The selected image cannot be applied.`r`n`r`nEdition ID: $EditionID`r`nReason: This is probably an industrial, evaluation or starter edition. Pick a different image. (Note: You can use the same input file but a different image in it.)"
                 }
                 $ClientMatch = @($WindowsEditionIDs.Client) | Where-Object { $_ -ieq $EditionID } | Select-Object -First 1
                 $ServerMatch = @($WindowsEditionIDs.Server) | Where-Object { $_ -ieq $EditionID } | Select-Object -First 1
@@ -2739,11 +2825,11 @@ switch -CaseSensitive ($Op) {
         try { Process-Container -ExePath $wimlib -Arguments @('apply', $Path, $idx, $dir) -Activity Apply -Mode "Apply" } catch { Set-Progress "Apply" "Apply failed" 100; Error "Apply failed." }
         if ($InstallingWindows) {
             Set-Progress "Apply" "Creating bootfiles." 80
-            & $mountvol @('A:\', '/s') > $null 2>&1 # Mount EFI system partition.
-            & $bcdboot @("$dir\Windows", '/s', 'A:\', '/f', 'ALL') > $null 2>&1 # Create boot files or update bcd.
-            & $mountvol @('A:\', '/d') > $null 2>&1 # Unmount EFI system partition.
-            $result = Question -msg "Completed. Do you want to reboot into firmware to configure boot order?" -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Information)
-            if ($result -eq [System.Windows.Forms.DialogResult]::Yes) { & shutdown @('/r', '/fw', '/f', '/t', 0) } # If they consent, reboot to firmware setup. :)
+            & $mountvol @('A:\','/s') > $null 2>&1 # Mount EFI system partition.
+            & $bcdboot @("$dir\Windows",'/s','A:\','/f','ALL') > $null 2>&1 # Create boot files or update bcd.
+            & $mountvol @('A:\','/d') > $null 2>&1 # Unmount EFI system partition.
+            $result = Question "Completed. Do you want to reboot into firmware to configure boot order?" Information
+            if ($result -eq "Yes") { & shutdown @('/r', '/fw', '/f', '/t', 0) } # If they consent, reboot to firmware setup. :)
         }
         Complete-Progress "Apply"
     }
@@ -2787,14 +2873,14 @@ switch -CaseSensitive ($Op) {
     'RecompressWIM' {
         Set-Progress "RecompressWIM" "Optimising/compressing WIM" 50
         $destName = [System.IO.Path]::GetFileName($Path)
-        $result = Question -msg "Is this WIM a boot image that requires re-export?" -Buttons YesNoCancel
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $result = Question "Is this WIM a boot image that requires re-export?" YesNoCancel
+        if ($result -eq "Yes") {
             $out = $Path + "new"
             try {
                 $null = Process-Container -ExePath $wimlib -Arguments @('export', $Path, 'all', $out, '--compress=LZX', '--boot') -Activity "RecompressWIM" -Mode "Capture And Export"
             } catch {
                 Set-Progress "RecompressWIM" "Errored" 100
-                Error "RecompressWIM failed.`n$_"
+                Error "RecompressWIM failed.`r`n$_"
             }
             if ($LASTEXITCODE -eq 0) {
                 Remove-Item $Path -Force
@@ -2807,7 +2893,7 @@ switch -CaseSensitive ($Op) {
                 $null = Process-Container -ExePath $wimlib -Arguments @('optimize', $Path, '--compress=LZX') -Activity "RecompressWIM" -Mode "Capture And Export"
             } catch {
                 Set-Progress "RecompressWIM" "Errored" 100
-                Error "RecompressWIM failed.`n$_"
+                Error "RecompressWIM failed.`r`n$_"
             }
         }
         Complete-Progress "RecompressWIM"
@@ -2815,15 +2901,15 @@ switch -CaseSensitive ($Op) {
     # Recompress ESD operation. Used to optimise the size of the ESD file.
     'RecompressESD' {
         Set-Progress "RecompressESD" "Optimising/compressing ESD" 50
-        $result = Question -msg "Is this ESD a boot image that requires re-export?" -Buttons YesNoCancel
-        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $result = Question -Message "Is this ESD a boot image that requires re-export?" -Buttons YesNoCancel
+        if ($result -eq "Yes") {
             Write-Warning $CompressWarn
             $out = $Path + "new"
             try {
                 $null = Process-Container -ExePath $wimlib -Arguments @('export', $Path, 'all', $out, '--compress=LZMS', '--boot') -Activity "RecompressESD" -Mode "Capture And Export"
             } catch {
                 Set-Progress "RecompressESD" "Errored" 100
-                Error "RecompressESD failed.`n$_"
+                Error "RecompressESD failed.`r`n$_"
             }
             if ($LASTEXITCODE -eq 0) {
                 Remove-Item $Path -Force
@@ -2836,7 +2922,7 @@ switch -CaseSensitive ($Op) {
                 $null = Process-Container -ExePath $wimlib -Arguments @('optimize', $Path, '--compress=LZMS') -Activity "RecompressESD" -Mode "Capture And Export"
             } catch {
                 Set-Progress "RecompressESD" "Errored" 100
-                Error "RecompressESD failed.`n$_"
+                Error "RecompressESD failed.`r`n$_"
             }
         }
         Complete-Progress "RecompressESD"
@@ -2853,7 +2939,7 @@ switch -CaseSensitive ($Op) {
             $null = Process-Container -ExePath $wimlib -Arguments $ConvertArgs -Activity "ConvertToWIM" -Mode "Capture And Export"
         } catch {
             Set-Progress "ConvertToWIM" "Errored" 100
-            Error "ConvertToWIM failed.`n$_"
+            Error "ConvertToWIM failed.`r`n$_"
         }
         Set-Progress "ConvertToWIM" "Deleting source file..." 80
         Remove-Item -Path $Path -Force
@@ -2872,7 +2958,7 @@ switch -CaseSensitive ($Op) {
             $null = Process-Container -ExePath $wimlib -Arguments $ConvertArgs -Activity "ConvertToESD" -Mode "Capture And Export"
         } catch {
             Set-Progress "ConvertToESD" "Errored" 100
-            Error "ConvertToESD failed.`n$_"
+            Error "ConvertToESD failed.`r`n$_"
         }
         Set-Progress "ConvertToESD" "Deleting source file..." 80
         Remove-Item -Path $Path -Force
@@ -2901,7 +2987,7 @@ switch -CaseSensitive ($Op) {
             try { $null = Process-Container -ExePath $wimlib -Arguments @('delete', $Path, $idx) -Activity $Op -Mode "Capture And Export" } catch { Error $($_.Exception.Message) }
             if ($LASTEXITCODE -ne 0) {
                 Set-Progress "DeleteImage" "Errored at index $idx" 100
-                Error "Delete failed for index $idx.`n$raw"
+                Error "Delete failed for index $idx.`r`n$raw"
             }
         }
         Set-Progress "DeleteImage" "Finalising" 95
@@ -2910,6 +2996,7 @@ switch -CaseSensitive ($Op) {
     }
     # Create ISO operation. Used to generate a bootable ISO from an official ESD source. 
     'CreateISOWIM' {
+        if ($Arch -ne "AMD64") { Error "Sorry! This function is not supported on $Arch devices.`r`n`r`nYou need to be on an AMD64 device to use ${Op}.`r`n`r`nPlease submit an issue on ${GithubRepo} and Aarav Katariya will reach out to you. Thank you!" }
         $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
         if ($ext -ne '.esd') { Error "CreateISOWIM only supports ESD input files. Provided: $ext" }
         $dirWim = Join-Path $WorkingDir "isocreator\wim\ISOFOLDER"
@@ -2921,18 +3008,19 @@ switch -CaseSensitive ($Op) {
             $raw = & "$exeWim" "$Path" 2>&1
             $exit = $LASTEXITCODE
         } catch {
-            Error "Errored to start createisowim.exe: `n$($_.Exception.Message)"
+            Error "Errored to start createisowim.exe: `r`n$($_.Exception.Message)"
         }
         if ($exit -eq 0 -and (Test-Path "$env:USERPROFILE\Desktop\$base.iso")) {
             Complete-Progress "CreateISOWIM"
             Info "ISO creation completed successfully.`r`nExit code: $exit"
         } else {
             Set-Progress "CreateISOWIM" "ISO creation failed" 100
-            $msg = "createisowim.exe returned exit code $exit.`r`n`r`nOutput:`n$raw"
-            Error $msg
+            $Message = "createisowim.exe returned exit code $exit.`r`n`r`nOutput:`r`n$raw"
+            Error $Message
         }
     }
     'CreateISOESD' {
+        if ($Arch -ne "AMD64") { Error "Sorry! This function is not supported on $Arch devices.`r`n`r`nYou need to be on an AMD64 device to use ${Op}.`r`n`r`nPlease submit an issue on ${GithubRepo} and Aarav Katariya will reach out to you. Thank you!" }
         $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
         if ($ext -ne '.esd') { Error "CreateISOESD only supports ESD input files. Provided: $ext" }
         $dirEsd = Join-Path $WorkingDir "isocreator\esd\ISOFOLDER"
@@ -2944,15 +3032,15 @@ switch -CaseSensitive ($Op) {
             $raw = & "$exeEsd" "$Path" 2>&1
             $exit = $LASTEXITCODE
         } catch {
-            Error "Errored to start createisoesd.exe: `n$($_.Exception.Message)"
+            Error "Errored to start createisoesd.exe: `r`n$($_.Exception.Message)"
         }
         if ($exit -eq 0 -and (Test-Path "$env:USERPROFILE\Desktop\$base.iso")) {
             Complete-Progress "CreateISOESD"
             Info "ISO creation completed successfully.`r`nExit code: $exit"
         } else {
             Set-Progress "CreateISOESD" "ISO creation failed" 100
-            $msg = "createisoesd.exe returned exit code $exit.`r`n`r`nOutput:`r`n$raw"
-            Error $msg
+            $Message = "createisoesd.exe returned exit code $exit.`r`n`r`nOutput:`r`n$raw"
+            Error $Message
         }
     }
     'ExtractWIM' {
@@ -2990,12 +3078,12 @@ switch -CaseSensitive ($Op) {
         $where = "to"
         Set-Progress "SaveWIM" "Testing paths..." 30
         if (-not (Test-Path -LiteralPath $wimexe) -and (Get-Command 'wimlib-imagex.exe' -ErrorAction SilentlyContinue)) { $wimexe = (Get-Command 'wimlib-imagex.exe').Source }
-        if (-not (Test-Path -LiteralPath $wimexe)) { $wimexe = Join-Path $WorkingDir "bin\wimlib-imagex.exe" }
+        if (-not (Test-Path -LiteralPath $wimexe)) { $wimexe = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" }
         if (-not (Test-Path -LiteralPath $wimexe)) { Error "A dependency (wimlib-imagex.exe) is missing." }
         Set-Progress "SaveWIM" "$action $Path $where ${dest}..." 60
-        try { $null = Process-Container -ExePath $wimexe -Arguments $parameters -Activity "SaveWIM" -Mode "Capture And Export" } catch { Error "The operation failed.`n$_" }
+        try { $null = Process-Container -ExePath $wimexe -Arguments $parameters -Activity "SaveWIM" -Mode "Capture And Export" } catch { Error "The operation failed.`r`n$_" }
         Complete-Progress "SaveWIM"
-        Info "WIM saved:`n$dest"
+        Info "WIM saved:`r`n$dest"
     }
     'SaveESD' {
         Info "You can choose to save a drive into a new esdfile. If you close the dialog, this operation will abort."
@@ -3014,13 +3102,13 @@ switch -CaseSensitive ($Op) {
         $where = "to"
         Set-Progress "SaveESD" "Testing paths..." 30
         if (-not (Test-Path -LiteralPath $esdexe) -and (Get-Command 'wimlib-imagex.exe' -ErrorAction SilentlyContinue)) { $esdexe = (Get-Command 'wimlib-imagex.exe').Source }
-        if (-not (Test-Path -LiteralPath $esdexe)) { $esdexe = Join-Path $WorkingDir "bin\wimlib-imagex.exe" }
+        if (-not (Test-Path -LiteralPath $esdexe)) { $esdexe = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" }
         if (-not (Test-Path -LiteralPath $esdexe)) { Error "A dependency (wimlib-imagex.exe) is missing." }
         Write-Warning $CompressWarn
         Set-Progress "SaveESD" "$action $Path $where ${dest}..." 60
-        try { $null = Process-Container -ExePath $esdexe -Arguments $parameters -Activity "SaveESD" -Mode "Capture And Export" } catch { Error "The operation failed.`n$_" }
+        try { $null = Process-Container -ExePath $esdexe -Arguments $parameters -Activity "SaveESD" -Mode "Capture And Export" } catch { Error "The operation failed.`r`n$_" }
         Complete-Progress "SaveESD"
-        Info "ESD saved:`n$dest"
+        Info "ESD saved:`r`n$dest"
     }
     'SaveSWM' {
         Info "You can choose to save a drive into a new split wimfile. If you close the dialog, this operation will abort."
@@ -3044,7 +3132,7 @@ switch -CaseSensitive ($Op) {
         $where = "to"
         Set-Progress "SaveSWM" "Testing paths..." 30
         if (-not (Test-Path -LiteralPath $swmexe) -and (Get-Command 'wimlib-imagex.exe' -ErrorAction SilentlyContinue)) { $swmexe = (Get-Command 'wimlib-imagex.exe').Source }
-        if (-not (Test-Path -LiteralPath $swmexe)) { $swmexe = Join-Path $WorkingDir "bin\wimlib-imagex.exe" }
+        if (-not (Test-Path -LiteralPath $swmexe)) { $swmexe = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" }
         if (-not (Test-Path -LiteralPath $swmexe)) { Error "A dependency (wimlib-imagex.exe) is missing." }
         Set-Progress "SaveSWM" "Building temporary file... ($tempfile)" 45
         try { $null = Process-Container -ExePath $swmexe -Arguments $first_parameters -Activity "SaveSWM" -Mode "Capture And Export" } catch { Error "Capture to temp failed.`r`n$_" }
@@ -3121,12 +3209,12 @@ switch -CaseSensitive ($Op) {
         Write-Host "You have ${WimInfo.ImageCount} images in: ${Path}."
         Set-Progress $Op "Select the new bootable image index..." 50
         $NewBootIndex = [uint32](Pick-Index -Path $Path)
-        if ($NewBootIndex -lt 1 -or $NewBootIndex -gt [uint32]$WimInfo.ImageCount) { Error "$NewBootIndex does not exist. It shall be in the range of (1-$($WimInfo.ImageCount))." }
+        if ($NewBootIndex -lt 1 -or $NewBootIndex -gt [uint32]$WimInfo.ImageCount) { Error "$NewBootIndex does not exist. It needs to be in the range of (1-$($WimInfo.ImageCount))." }
         if ($NewBootIndex -eq $CurrentBootIndex) {
             Complete-Progress $Op
             Error "$NewBootIndex is already the bootable image that boots when you boot from this file!"
         }
-        if ((Question "Are you sure you want to change the boot image?`r`n`r`nCurrent: ${CurrentBootIndex}`r`nNew: ${NewBootIndex}`r`n`r`nThis action can be undone afterwards." -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) {
+        if ((Question "Are you sure you want to change the boot image?`r`n`r`nCurrent: ${CurrentBootIndex}`r`nNew: ${NewBootIndex}`r`n`r`nThis action can be undone afterwards." -Buttons YesNo) -ne "Yes") {
             Complete-Progress $Op
             Error "You aborted. Nothing has ever happened. Sssshhhh..."
         }
@@ -3232,7 +3320,7 @@ switch -CaseSensitive ($Op) {
         Clear-Host
         if ($WinForm.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { Error "Sorry! You (${env:USERNAME}) cancelled the operation." }
         if ([string]::IsNullOrWhiteSpace($NameBox.Text)) { Error "Sorry! No empty names please!" }
-        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo -Icon ([System.Windows.Forms.MessageBoxIcon]::Question)) -ne [System.Windows.Forms.DialogResult]::Yes) { Error "Nevermind then..." }
+        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo) -ne "Yes") { Error "Nevermind then..." }
         Set-Progress $Op "Changes are applying..." 80
         Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text
         Set-Progress $Op "We will confirm the changes." 95
@@ -4588,12 +4676,17 @@ Windows Registry Editor Version 5.00
                 if ($LASTEXITCODE -gt 0) { return $false }
                 Remove-Item -LiteralPath $RegFile -Force -ErrorAction SilentlyContinue
                 Stop-Process -Name explorer -Force | Out-Null
-                $ZipPath = Join-Path $Root 'ALOS_Image_Tools.zip'
+                $ZipPath = Join-Path $Root 'ALOS-ImageTools.zip'
                 $Files = @(
-                    "bin\7z.dll"
-                    "bin\7z.exe"
-                    "bin\libwim-15.dll"
-                    "bin\wimlib-imagex.exe"
+                    "bin\AMD64\7z.dll"
+                    "bin\AMD64\7z.exe"
+                    "bin\AMD64\libwim-15.dll"
+                    "bin\AMD64\wimlib-imagex.exe"
+                    "bin\ARM64\7z.dll"
+                    "bin\ARM64\7z.exe"
+                    "bin\ARM64\libwim-15.dll"
+                    "bin\ARM64\wimlib-imagex.exe"
+                    "isocreator\esd\decrypt.cmd"
                     "isocreator\esd\CreateISOESD.exe"
                     "isocreator\esd\bin\7z.dll"
                     "isocreator\esd\bin\7z.exe"
@@ -4610,6 +4703,7 @@ Windows Registry Editor Version 5.00
                     "isocreator\esd\bin\wimlib-imagex.exe"
                     "isocreator\esd\bin\bin64\libwim-15.dll"
                     "isocreator\esd\bin\bin64\wimlib-imagex.exe"
+                    "isocreator\wim\decrypt.cmd"
                     "isocreator\wim\CreateISOWIM.exe"
                     "isocreator\wim\bin\7z.dll"
                     "isocreator\wim\bin\7z.exe"
@@ -4633,9 +4727,9 @@ Windows Registry Editor Version 5.00
                 $PresentFiles = Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Root.Length + 1) }
                 $Missing = $Files | Where-Object { $_ -notin $PresentFiles }
                 if ($Missing) {
-                    if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "https://github.com/AaravLegendOS/alos-image-tools/raw/refs/heads/main/ALOS_Image_Tools.zip" -OutFile $ZipPath }
+                    if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -cne "38C4F562336BDEE743FD0527CE919DEF38667C20F6ED35C5C457AFCCD372FC8C") { return $false }
+                    if ($Hash -ne "") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -4945,6 +5039,7 @@ Windows Registry Editor Version 5.00
             $Form.Size = New-Object System.Drawing.Size(760, 430)
             $Form.FormBorderStyle = 'FixedDialog'
             $Form.MaximizeBox = $false
+            $Form.MinimizeBox = $false
             $ThemeColours = Is-LightModeOn
             $Form.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
             $Form.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
@@ -4995,7 +5090,7 @@ Windows Registry Editor Version 5.00
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
             $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton))
-            [void]$Form.ShowDialog()
+            $null = $Form.ShowDialog()
         }
     }
     default {
@@ -5011,5 +5106,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5015
+    Line count: 5110
 #>
