@@ -307,7 +307,8 @@ param(
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
     [switch]$NoHashes,
-    [switch]$Updated
+    [switch]$Updated,
+    [switch]$ForceUpdate
 )
 # Clear the console screen.
 Clear-Host
@@ -429,6 +430,7 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
+        Copy-Item "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd/MM/yyyy@HH:mm:ss").ps1"
         Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
         $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
         $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper()
@@ -5105,5 +5107,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5109
+    Line count: 5111
 #>
