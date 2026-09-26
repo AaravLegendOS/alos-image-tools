@@ -424,7 +424,7 @@ function Acquire-LatestALOSImageTools {
 }
 $NewestVersion = Acquire-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip to work.)
-if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ")) -or (($ForceUpdate) -and ($Updated -ne $false))) {
+if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $false)) -or (($ForceUpdate) -and ($Updated -ne $false))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
