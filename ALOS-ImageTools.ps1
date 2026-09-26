@@ -419,7 +419,8 @@ function CheckFor-LatestALOSImageTools {
         [string]$User = "AaravLegendOS",
         [string]$Repo = "alos-image-tools"
     )
-    if ((Test-NetConnection -ComputerName www.github.com -Port 443).TcpTestSucceeded) {
+    $ProgressPreference = 'SilentyContinue'
+    if (Test-NetConnection -ComputerName www.github.com -Port 443 -InformationLevel Quiet) {
         # Ping the GitHub API to get json data before converting it from json.
         $TagInfo = Invoke-WebRequest -Uri "https://api.github.com/repos/${User}/${Repo}/git/refs/tag" -UseBasicParsing | ConvertFrom-Json
         # And then filter out the reference until only the tag version is recieved.
@@ -427,7 +428,6 @@ function CheckFor-LatestALOSImageTools {
         return $Version # Finally, return the data to the main routine.
     } else { return "OFFLINE" }
 }
-$ProgressPreference = 'SilentyContinue'
 $NewestVersion = CheckFor-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip and internet connection to github to work.)
 if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne "Yes")) -or ($ForceUpdate -and ($Updated -ne "Yes"))) {
@@ -457,7 +457,7 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
                     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
                     Exit 0
                 }
-            }
+            } else { Error "Error! The hash does not match.`r`n`r`nExpected: ${WebHash}`r`nActual: ${Actual}`r`nUsually, you might have to wait a few more seconds but if not, contact the developer via GitHub issues at:`r`n`r`n${GithubRepo}/issues" }
         } else { Error "Sorry! We were unable to update ALOS Image Tools! Please try again later." }
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
