@@ -427,12 +427,14 @@ function CheckFor-LatestALOSImageTools {
         return $Version # Finally, return the data to the main routine.
     } else { return "OFFLINE" }
 }
+$ProgressPreference = 'SilentyContinue'
 $NewestVersion = CheckFor-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip and internet connection to github to work.)
 if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne "Yes")) -or ($ForceUpdate -and ($Updated -ne "Yes"))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
+        $ProgressPreference = 'Continue'
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
         Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
         if ($?) {
@@ -5108,5 +5110,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5112
+    Line count: 5114
 #>
