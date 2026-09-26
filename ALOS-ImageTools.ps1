@@ -310,6 +310,7 @@ param(
     [bool]$Updated = $false,
     [switch]$ForceUpdate
 )
+if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
 # Clear the console screen.
 Clear-Host
 # Define the working directory. It will determine all the sub-locations.
@@ -350,7 +351,7 @@ function Question {
         [string]$Message,
         [ValidateSet("YesNo","YesNoCancel","OKCancel")]
         [string]$Buttons = "YesNo",
-        [ValidateSet("Information","Info","Warning","Warn","Error","Question")]
+        [ValidateSet("Information","Info","Warning","Warn","Error","Err","Question")]
         [string]$Type = "Question"
     )
     if ($WPFUI) { return [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) } else { return [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) }
@@ -425,12 +426,12 @@ function Acquire-LatestALOSImageTools {
 }
 $NewestVersion = Acquire-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip to work.)
-if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $false)) -or (($ForceUpdate) -and ($Updated -ne $false))) {
+if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $true)) -or ($ForceUpdate -and ($Updated -ne $true))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
-        Copy-Item "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd/MM/yyyy@HH:mm:ss").ps1"
+        Copy-Item "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion.ToString())_$(Get-Date -Format "dd/MM/yyyy@HH.mm.ss").ps1"
         if ($?) {
             Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
             $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
@@ -451,7 +452,7 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
                     Exit 0
                 }
             }
-        }
+        } else { Error "Sorry! We were unable to update ALOS Image Tools! Please try again later." }
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
 # Did you know you can put comments in a hashtable and a powershell custom object?
@@ -612,10 +613,9 @@ $GithubRepo = 'https://github.com/AaravLegendOS/alos-image-tools'
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) {
     # Create an Affero GPL notice.
     $AGPLNotice = @'
-===========================================================================
-              Welcome To ALOS Image Tools By Aarav Katariya!
-===========================================================================
-
+========================================================================================================================
+                                      Welcome To ALOS Image Tools By Aarav Katariya!
+========================================================================================================================
 Copyright (C) 2023-2026 Aarav Katariya
 
 This program is free software: you can redistribute it and/or modify
@@ -640,8 +640,7 @@ relicense the combined work as stated in the GNU Affero General Public License.
 
 **This legal notice must be displayed under Section 0 and 5 of the GNU AGPL.**
 
-If you want to exit setup, you need to press Alt F4. The setup goes full screen
-on top of every other window. (Even unfocusing will not hide the window.)
+If you want to exit setup, you need to press Alt F4. The setup goes full screen on top of every other window.
 '@
     # And then print it as well as a ten second delay.
     Clear-Host
@@ -2093,7 +2092,7 @@ function Set-WimBootIndex {
             $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
             Error "Sorry! The boot index changed successfully but we failed to verfiy that it actually changed.`r`n`r`nThe error is: ${Err}."
         }
-        if ($Verification.BootIndex -ne $Index) { Error "Boot index verification failed.`r`n`r`nRequested index: $Index`r`nActual WIM BootIndex: $($Verification.BootIndex)" }
+        if ($Verification.BootIndex -ne $Index) { Error "Boot index verification failed.`r`n`r`nRequested index: ${Index}`r`nActual WIM BootIndex: $($Verification.BootIndex)" }
         return $Verification
     }
     finally { [ALOSImageTools.NativeWimg]::WIMCloseHandle($WIMGAPI) | Out-Null }
@@ -2104,7 +2103,7 @@ function Get-WimImageMetadata {
         [Parameter(Mandatory)]
         [string]$WimPath,
         [Parameter(Mandatory)]
-        [uint32]$Index
+        [ulong]$Index
     )
     [uint32]$CreationResult = 0
     $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
@@ -2147,7 +2146,7 @@ function Set-WimImageMetadata {
         [Parameter(Mandatory)]
         [string]$WimPath,
         [Parameter(Mandatory)]
-        [uint32]$Index,
+        [ulong]$Index,
         [string]$Name,
         [string]$Description,
         [string]$Flags
@@ -2191,7 +2190,7 @@ function Show-Finished {
     $Host.UI.RawUI.WindowTitle = "$Op Completed On $Path" # Set the Window Title to say done.
     $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2026 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
     Info $MessageExit # Say to the user that the task is complete.
-    if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { Stop-Process -Name powershell -Force } # If setup is launched, forcibly kill the PowerShell process because we assume user launched from the PowerShell command-line.
+    if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { Stop-Process -Id $Pid -Force } # If setup is launched, forcibly kill the PowerShell process because we assume user launched from the PowerShell command-line.
     Exit 0 # Normal operations exit the program with a status code of 0.
 }
 Clear-Host # Because we have finished defining functions.
@@ -2214,10 +2213,7 @@ $base = [IO.Path]::GetFileNameWithoutExtension($Path) # Get the base filename wi
 $wimlib = $env:WimManage # Search for the WimManage variable. It may be useful.
 if (-not $wimlib) { $wimlib = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" } # If not defined as an environment variable, use the default binary.
 $testpath = $true
-if ($Op -ceq "SetupProgram" -and $Path -ceq "SetupProgram") {
-    $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)"
-    $testpath = $false
-}
+if ($Op -ceq "SetupProgram" -and $Path -ceq "SetupProgram") { $testpath = $false }
 if ($testpath) { if (-not (Test-Path -LiteralPath $Path)) { Error "Image file, source or directory not found:`r`n$Path" } } # Automatically fail if the path is not valid. Helper for Op "SetupProgram". Do not remove this. It is very important. :(
 # Enter the main body but use case-sensitivity to match Linux software.
 switch -CaseSensitive ($Op) {
@@ -5109,5 +5105,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5113
+    Line count: 5109
 #>
