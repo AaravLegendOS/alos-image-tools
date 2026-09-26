@@ -303,11 +303,11 @@ param(
     [string]$Op = 'SetupProgram',
     [Parameter(HelpMessage="Where is your image file or directory?")]
     [string]$Path = 'SetupProgram',
+    [string]$Updated = "No",
     [switch]$InstallingWindows,
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
     [switch]$NoHashes,
-    [bool]$Updated = $false,
     [switch]$ForceUpdate
 )
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
@@ -327,7 +327,7 @@ if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" } # If -InstallingWindows is passed, append that to our relaunch command.
     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" } # If NoHashes is passed, append that to our relaunch command.
     if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" } # If WPFUI switch is passed, append that to our relaunch command.
-    if ($Updated) { $Relaunch_Arguments += '-Updated $true' } # If Updated switch is passed by updater, append that to our relaunch command.
+    if ($Updated) { $Relaunch_Arguments += '-Updated Yes' } # If Updated switch is passed by updater, append that to our relaunch command.
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
@@ -429,7 +429,7 @@ function CheckFor-LatestALOSImageTools {
 }
 $NewestVersion = CheckFor-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip and internet connection to github to work.)
-if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $true)) -or ($ForceUpdate -and ($Updated -ne $true))) {
+if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne "Yes")) -or ($ForceUpdate -and ($Updated -ne "Yes"))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
@@ -451,7 +451,7 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
                     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
                     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
                     if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
-                    $Relaunch_Arguments += '-Updated $true'
+                    $Relaunch_Arguments += '-Updated Yes'
                     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
                     Exit 0
                 }
