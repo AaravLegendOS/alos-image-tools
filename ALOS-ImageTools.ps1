@@ -307,7 +307,7 @@ param(
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
     [switch]$NoHashes,
-    [switch]$Updated,
+    [bool]$Updated = $false,
     [switch]$ForceUpdate
 )
 # Clear the console screen.
@@ -325,7 +325,7 @@ if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" } # If -InstallingWindows is passed, append that to our relaunch command.
     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" } # If NoHashes is passed, append that to our relaunch command.
     if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" } # If WPFUI switch is passed, append that to our relaunch command.
-    if ($Updated) { $Relaunch_Arguments += "-Updated" } # If Updated switch is passed by updater, append that to our relaunch command.
+    if ($Updated) { $Relaunch_Arguments += '-Updated $true' } # If Updated switch is passed by updater, append that to our relaunch command.
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
@@ -431,23 +431,25 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
         Copy-Item "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd/MM/yyyy@HH:mm:ss").ps1"
-        Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
-        $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
-        $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper()
-        # Do a case-sensitive comparison for extra safety.
-        if ($Hash -ceq $WebHash) {
-            Expand-Archive
-            if ($?) {
-                if (Test-Path -LiteralPath $MainZipPath) { Remove-Item -Path $MainZipPath -Force }
-                Clear-Host
-                Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
-                $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
-                if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
-                if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
-                if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
-                $Relaunch_Arguments += "-Updated"
-                Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
-                Exit 0
+        if ($?) {
+            Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
+            $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
+            $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper()
+            # Do a case-sensitive comparison for extra safety.
+            if ($Hash -ceq $WebHash) {
+                Expand-Archive -Path "${WorkingDir}\ALOS-ImageTools.zip" -DestinationPath $WorkingDir -Force
+                if ($?) {
+                    if (Test-Path -LiteralPath $MainZipPath) { Remove-Item -Path $MainZipPath -Force }
+                    Clear-Host
+                    Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
+                    $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
+                    if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
+                    if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
+                    if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
+                    $Relaunch_Arguments += '-Updated $true'
+                    Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
+                    Exit 0
+                }
             }
         }
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
@@ -5107,5 +5109,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5111
+    Line count: 5113
 #>
