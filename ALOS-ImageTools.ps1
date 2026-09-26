@@ -55,8 +55,8 @@
         DeleteImage - Delete one or more image indices from a WIM file.
         JoinWIM - Join a split wimfile and it's parts to a standard WIM file.
         JoinESD - Join a split wimfile and it's parts to a standard WIM file and then convert it to a far smaller ESD file.
-        ChangeBootIndexWIM - Read a wim file and change it's boot index without something like GimageX. Eg, change a wimfile's boot index from 1 to 2.
-        ChangeImageInfo - Read a wim file and change it's whole image metadata to your liking.
+        ChangeBootIndexWIM - Read a wim file and change the boot index without something like GimageX. Eg, change a wimfile's boot index from 1 to 2.
+        ChangeImageInfo - Read a wim file and change the whole image metadata to your liking.
     }
 .PARAMETER Path
     This is a mandatory parameter.
@@ -152,11 +152,11 @@
     Join a split wimfile and it's parts to a standard WIM file and then convert it to a far smaller ESD file.
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op ChangeBootIndexWIM -Path C:\boot.wim
-    Read a wim file and change it's boot index without something like GimageX.
+    Read a wim file and change the boot index without something like GimageX.
     Eg, change a wimfile's boot index from 1 to 2.
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op ChangeImageInfo -Path C:\data.wim
-    Read a wim file and change it's whole image metadata to your liking.
+    Read a wim file and change the whole image metadata to your liking.
 .NOTES
     Author: Aarav Katariya
     Version: 1.0.0.0
@@ -306,10 +306,15 @@ param(
     [switch]$InstallingWindows,
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
-    [switch]$NoHashes
+    [switch]$NoHashes,
+    [switch]$Updated
 )
 # Clear the console screen.
 Clear-Host
+# Define the working directory. It will determine all the sub-locations.
+$WorkingDir = $PSScriptRoot
+# Define the main zip path for updates.
+$MainZipPath = "${WorkingDir}\ALOS-ImageTools.zip"
 # Check for administrator privelges.
 $Principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -319,6 +324,7 @@ if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" } # If -InstallingWindows is passed, append that to our relaunch command.
     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" } # If NoHashes is passed, append that to our relaunch command.
     if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" } # If WPFUI switch is passed, append that to our relaunch command.
+    if ($Updated) { $Relaunch_Arguments += "-Updated" } # If Updated switch is passed by updater, append that to our relaunch command.
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
@@ -389,7 +395,7 @@ function Complete-Progress {
 }
 # Obtain and validate architecture.
 $AArch = [int](Get-CimInstance Win32_Processor).Architecture # AArch is temp variable in this case.
-$Arch = if ($Aarch -eq 9) { "AMD64" } elseif ($Aarch -eq 12) { "ARM64" } else { "UNSUPPORTED" } # Arch is out permanent variable.
+$Arch = if ($AArch -eq 9) { "AMD64" } elseif ($AArch -eq 12) { "ARM64" } else { "UNSUPPORTED" } # Arch is our permanent variable.
 $AArch = $null # Clear the AArch variable.
 if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
 # Validate Arguments.
@@ -398,8 +404,6 @@ if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You pass
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
-# Define the working directory. It will determine all the sub-locations.
-$WorkingDir = $PSScriptRoot
 # Set a helpful message if you choose a resource-intensive operation.
 $CompressWarn = "This will use all your system resources. It can take up to several hours depending on your system. Your cpu will remain at 100% usage."
 # Define version.
@@ -418,47 +422,31 @@ function Acquire-LatestALOSImageTools {
     $Version = $Json[-1].ref -replace 'refs/tags/', ''
     return $Version # Finally, return the data to the main routine.
 }
-# And this function for using the user's 7-Zip.
-function Seven-Zip {
-    param(
-        [Parameter(Mandatory)]
-        [string]$SZPath,
-        [Parameter(Mandatory)]
-        [array]$Arguments,
-        [switch]$IncludeExitCode
-    )
-    $Arguments += if ("-bsp1" -notin $Arguments) { "-bsp1" } # Force progress reporting to power the progress bar.
-    $SevenZ = Join-Path "$Path" "7z.exe"
-    $Output = New-Object System.Collections.Generic.List[string]
-    # Stream the output of 7-Zip.
-    & $SevenZ @Arguments 2>&1 | ForEach-Object {
-        $Line = $_.ToString()
-        $Output.Add($Line)
-        if ($Line -match '^\s*(\d{1,3})%') {
-            $Percent = [int]$Matches[1]
-            & $SetProgress "7-Zip says:" "Extracting files... (${Percent}%)" $Percent
-        }
-    }
-    if ($IncludeExitCode) { return $LASTEXITCODE }
-}
 $NewestVersion = Acquire-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip to work.)
-if (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ")) {
+if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ")) -or (($ForceUpdate) -and ($Updated -ne $false))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
-        Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.7z" -OutFile "${WorkingDir}\ALOS-ImageTools.7z"
-        $Code = Seven-Zip -SZPath "$User_SevenZ" -Arguments @('x','-y','-r','-aoa',"-o${WorkingDir}","${WorkingDir}\ALOS-ImageTools.7z")
-        if ($Code -lt 2) {
-            Clear-Host
-            Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
-            $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
-            if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
-            if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
-            if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
-            Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
-            Exit 0
+        Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
+        $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
+        $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper()
+        # Do a case-sensitive comparison for extra safety.
+        if ($Hash -ceq $WebHash) {
+            Expand-Archive
+            if ($?) {
+                if (Test-Path -LiteralPath $MainZipPath) { Remove-Item -Path $MainZipPath -Force }
+                Clear-Host
+                Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
+                $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
+                if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
+                if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
+                if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
+                $Relaunch_Arguments += "-Updated"
+                Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
+                Exit 0
+            }
         }
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
@@ -647,16 +635,17 @@ except, the AGPL code stays AGPL and the GPL code stays GPL without needing to
 relicense the combined work as stated in the GNU Affero General Public License.
 
 **This legal notice must be displayed under Section 0 and 5 of the GNU AGPL.**
+
+If you want to exit setup, you need to press Alt F4. The setup goes full screen
+on top of every other window. (Even unfocusing will not hide the window.)
 '@
     # And then print it as well as a ten second delay.
     Clear-Host
     Write-Host $AGPLNotice -ForegroundColor Yellow # Ask me why I use 2023-20XX instead of just 20XX?
-    # But if we have WPFUI enabled, say this extra message.
-    if ($WPFUI) { Write-Host 'If you want to exit setup, you need to press Alt F4.' }
     Start-Sleep -Seconds 10
 } else {
     # Show the operation to the user.
-    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}.`r`n" # CRLF (\r\n / `r`n) is Windows, LF (\n / `r`n) is Unix and CR (\r / `r) is Macintosh.
+    Write-Host "Operation chosen: ${Op}`r`nFile or folder path selected: ${Path}." # CRLF (\r\n / `r`n) is Windows, LF (\n / `r`n) is Unix and CR (\r / `r) is Macintosh.
 }
 # Add the type for WIMGAPI use.
 if (-not ('ALOSImageTools.NativeWimg' -as [type])) {
@@ -1136,13 +1125,13 @@ namespace ALOSImageTools
 # Create a dark mode function that blacks out the windows of Windows Forms GUI's.
 function Enable-DarkMode {
     param([System.Windows.Forms.Control]$ControlRoot)
-    $colorBack = [System.Drawing.Color]::FromArgb(0,0,0)
-    $colorPanel = [System.Drawing.Color]::FromArgb(0,0,0)
-    $colorAltPanel = [System.Drawing.Color]::FromArgb(0,0,0)
-    $colorText = [System.Drawing.Color]::FromArgb(255,255,255)
-    $colorButton = [System.Drawing.Color]::FromArgb(0,0,0)
-    $colorBorder = [System.Drawing.Color]::FromArgb(255,255,255)
-    $colorHighlight = [System.Drawing.Color]::FromArgb(0,0,0)
+    $colorBack = [System.Drawing.Color]::Black
+    $colorPanel = [System.Drawing.Color]::Black
+    $colorAltPanel = [System.Drawing.Color]::Black
+    $colorText = [System.Drawing.Color]::White
+    $colorButton = [System.Drawing.Color]::Black
+    $colorBorder = [System.Drawing.Color]::White
+    $colorHighlight = [System.Drawing.Color]::Black
     if (-not $ControlRoot) { return }
     try {
         if ($ControlRoot -is [System.Windows.Forms.Form]) {
@@ -1240,7 +1229,7 @@ function Enable-DarkMode {
 function Pick-Folder($title, $default) {
     if ($WPFUI) {
         if (-not ("WPF_FolderBrowser" -as [type])) {
-            Add-Type -TypeDefinition @"
+            	Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class WPF_FolderBrowser
@@ -1397,10 +1386,10 @@ public static class WPF_FolderBrowser
         return path;
     }
 }
-"@
+'@
         }
-        $result = [WPF_FolderBrowser]::PickFolder($title, $default)
-        if ($result -and (Test-Path -LiteralPath $result -PathType Container)) { return $result }
+        $Result = [WPF_FolderBrowser]::PickFolder($title, $default)
+        if ($Result -and (Test-Path -LiteralPath $Result -PathType Container)) { return $result }
         Error "Operation cancelled."
     } else {
         $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -3484,6 +3473,7 @@ Windows Registry Editor Version 5.00
                 $OkButton.Add_Click({ $Window.DialogResult = $true; $Window.Close() })
                 $CancelButton.Add_Click({ $Window.DialogResult = $false; $Window.Close() })
                 $InputBox.Add_Loaded({ $InputBox.Focus(); $InputBox.SelectAll() })
+                $Window.TopMost = $true
                 [void]$Window.ShowDialog()
                 if ($Window.DialogResult) { return $InputBox.Text }
                 return $null
@@ -3532,6 +3522,7 @@ Windows Registry Editor Version 5.00
                 $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CancelButton))
                 $InputForm.AcceptButton = $OkButton
                 $InputForm.CancelButton = $CancelButton
+                $InputForm.TopMost = $true
                 $InputResult = $InputForm.ShowDialog()
                 if ($InputResult -eq [System.Windows.Forms.DialogResult]::OK) { return $InputBox.Text }
                 return $null
@@ -3583,6 +3574,7 @@ Windows Registry Editor Version 5.00
                 $ChoiceTwoButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::No; $Window.DialogResult = $true; $Window.Close() })
                 $ChoiceCancelButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel; $Window.DialogResult = $false; $Window.Close() })
                 $Window.Add_Closed({ if ($Window.DialogResult -ne $true) { $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel } })
+                $Window.TopMost = $true
                 [void]$Window.ShowDialog()
                 return $script:UninstallDialogResult
             } else {
@@ -3643,19 +3635,20 @@ Windows Registry Editor Version 5.00
                 $ChoiceCancelButton.ForeColor = $DialogFore
                 $ChoiceForm.Controls.AddRange(@($ChoiceOneButton, $ChoiceTwoButton, $ChoiceCancelButton))
                 $ChoiceForm.CancelButton = $ChoiceCancelButton
-                return $ChoiceForm.ShowDialog()
+                $ChoiceForm.TopMost = $true
+                $ChoiceResult = $ChoiceForm.ShowDialog()
+                return $ChoiceResult
             }
         }
         function Install-ALOSImageTools {
-            $PSExePath = $PSExe -replace '\\', '\\'
+            $PSExePath = $PSExe -replace '\\', '\\' # \\ is the regex pattern, second \\ is the escaped backslash for registry paths.
             $ALOSImageTools_Skeleton = Show-PromptDialog -Prompt "Enter the installation path or press ENTER to use the default directory of ${WorkingDir}."
             if ($null -eq $ALOSImageTools_Skeleton) { return $false }
             if ([string]::IsNullOrWhiteSpace($ALOSImageTools_Skeleton)) { $ALOSImageTools_Skeleton = $WorkingDir }
             $Root = $ALOSImageTools_Skeleton
             New-Item -ItemType Directory -Path $Root -Force | Out-Null
-            $ALOSImageToolsDir = $Root -replace '\\', '\\'
+            $ALOSImageToolsDir = $Root -replace '\\', '\\' # \\ is the regex pattern, second \\ is the escaped backslash for registry paths.
             $ALOSImageTools = "$ALOSImageToolsDir\\ALOS-ImageTools.ps1"
-            $ModernUI = if ($WPFUI) { "Yes" } else { "No" }
             $Registry_WF = @"
 Windows Registry Editor Version 5.00
 
@@ -4670,13 +4663,13 @@ Windows Registry Editor Version 5.00
 "@
             $RegFile = Join-Path $env:TEMP 'ALOS-ImageTools.reg'
             try {
-                $Registry = if ($ModernUI -eq "Yes") { $Registry_WPF } elseif ($ModernUI -eq "No") { $Registry_WF } else { return $false }
+                $Registry = if ($WPFUI) { $Registry_WPF } else { $Registry_WF }
                 Set-Content -LiteralPath $RegFile -Value $Registry -Encoding Unicode
                 & reg.exe import $RegFile 2>&1 | Out-Null
                 if ($LASTEXITCODE -gt 0) { return $false }
                 Remove-Item -LiteralPath $RegFile -Force -ErrorAction SilentlyContinue
                 Stop-Process -Name explorer -Force | Out-Null
-                $ZipPath = Join-Path $Root 'ALOS-ImageTools.zip'
+                $ZipPath = Join-Path $Root 'ALOS-ImageTools_Files.zip'
                 $Files = @(
                     "bin\AMD64\7z.dll"
                     "bin\AMD64\7z.exe"
@@ -4727,9 +4720,9 @@ Windows Registry Editor Version 5.00
                 $PresentFiles = Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Root.Length + 1) }
                 $Missing = $Files | Where-Object { $_ -notin $PresentFiles }
                 if ($Missing) {
-                    if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools.zip" -OutFile $ZipPath }
+                    if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "") { return $false }
+                    if ($Hash -ne "092005100C2BC4A5DAB3CBA786AFDBCBB9117C414A0F05BC38C167B31103FB11") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -4740,7 +4733,7 @@ Windows Registry Editor Version 5.00
             $DialogResult = Show-UninstallChoices
             switch ($DialogResult) {
                 { $_ -eq [System.Windows.Forms.DialogResult]::Yes } { $UninstallFile = $UninstallA }
-                { $_ -eq [System.Windows.Forms.DialogResult]::No }  { $UninstallFile = $UninstallB }
+                { $_ -eq [System.Windows.Forms.DialogResult]::No } { $UninstallFile = $UninstallB }
                 default { return $false }
             }
             $UninstallRegistry = Join-Path $env:TEMP "ALOSImageTools_Uninstall.reg"
@@ -5031,6 +5024,8 @@ Windows Registry Editor Version 5.00
             $Window.WindowState = [System.Windows.WindowState]::Maximized
             $Window.ResizeMode = [System.Windows.ResizeMode]::NoResize
             $Window.WindowStyle = [System.Windows.WindowStyle]::None
+            $Window.TopMost = $true
+            $Window.ShowInTaskbar = $false
             [void]$Window.ShowDialog()
         } else {
             $Form = New-Object System.Windows.Forms.Form
@@ -5040,6 +5035,10 @@ Windows Registry Editor Version 5.00
             $Form.FormBorderStyle = 'FixedDialog'
             $Form.MaximizeBox = $false
             $Form.MinimizeBox = $false
+            $Form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
+            $Form.WindowState = [System.Windows.Forms.FormWindowState]::Maximized
+            $Form.ShowInTaskbar = $false
+            $Form.TopMost = $true
             $ThemeColours = Is-LightModeOn
             $Form.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
             $Form.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
@@ -5106,5 +5105,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5110
+    Line count: 5109
 #>
