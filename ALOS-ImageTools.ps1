@@ -317,6 +317,7 @@ Clear-Host
 $WorkingDir = $PSScriptRoot
 # Define the main zip path for updates.
 $MainZipPath = "${WorkingDir}\ALOS-ImageTools.zip"
+$GithubRepo = 'https://github.com/AaravLegendOS/alos-image-tools'
 # Check for administrator privelges.
 $Principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -413,20 +414,22 @@ $CurrentVersion = [Version]"1.0.0.0"
 $User_SevenZ = "$(Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip | Select-Object -ExpandProperty InstallLocation)7z.exe"
 Write-Host "Checking for updates..." -ForegroundColor Yellow
 # Create this function before we check for updates.
-function Acquire-LatestALOSImageTools {
+function CheckFor-LatestALOSImageTools {
     param(
         [string]$User = "AaravLegendOS",
         [string]$Repo = "alos-image-tools"
     )
-    # Ping the GitHub API to get json data before converting it from json.
-    $Json = Invoke-WebRequest -Uri "https://api.github.com/repos/${User}/${Repo}/git/refs/tag" -UseBasicParsing | ConvertFrom-Json
-    # And then filter out the reference until only the tag version is recieved.
-    $Version = $Json[-1].ref -replace 'refs/tags/', ''
-    return $Version # Finally, return the data to the main routine.
+    if ((Test-NetConnection -ComputerName www.github.com -Port 443).TcpTestSucceeded) {
+        # Ping the GitHub API to get json data before converting it from json.
+        $TagInfo = Invoke-WebRequest -Uri "https://api.github.com/repos/${User}/${Repo}/git/refs/tag" -UseBasicParsing | ConvertFrom-Json
+        # And then filter out the reference until only the tag version is recieved.
+        $Version = $TagInfo[-1].ref -replace 'refs/tags/', ''
+        return $Version # Finally, return the data to the main routine.
+    } else { return "OFFLINE" }
 }
-$NewestVersion = Acquire-LatestALOSImageTools
-# Compare version and see if update needed. (Needs user's 7-Zip to work.)
-if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $true)) -or ($ForceUpdate -and ($Updated -ne $true))) {
+$NewestVersion = CheckFor-LatestALOSImageTools
+# Compare version and see if update needed. (Needs user's 7-Zip and internet connection to github to work.)
+if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne $true)) -or ($ForceUpdate -and ($Updated -ne $true))) {
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
@@ -442,7 +445,7 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
                 if ($?) {
                     if (Test-Path -LiteralPath $MainZipPath) { Remove-Item -Path $MainZipPath -Force }
                     Clear-Host
-                    Write-Host "Update has succeeded. ALOS Image Tools is restarting..." -ForegroundColor Green
+                    Write-Host "Update to $NewestVersion has succeeded. ALOS Image Tools is restarting to reflect the changes..." -ForegroundColor Green
                     $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
                     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
                     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
@@ -453,6 +456,7 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
                 }
             }
         } else { Error "Sorry! We were unable to update ALOS Image Tools! Please try again later." }
+        Exit 1
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
 # Did you know you can put comments in a hashtable and a powershell custom object?
@@ -609,7 +613,6 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
         "StarterN"
     )
 }
-$GithubRepo = 'https://github.com/AaravLegendOS/alos-image-tools'
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) {
     # Create an Affero GPL notice.
     $AGPLNotice = @'
@@ -5105,5 +5108,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5109
+    Line count: 5112
 #>
