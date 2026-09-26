@@ -327,7 +327,7 @@ if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" } # If -InstallingWindows is passed, append that to our relaunch command.
     if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" } # If NoHashes is passed, append that to our relaunch command.
     if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" } # If WPFUI switch is passed, append that to our relaunch command.
-    if ($Updated) { $Relaunch_Arguments += '-Updated Yes' } # If Updated switch is passed by updater, append that to our relaunch command.
+    if ($Updated -eq "Yes") { $Relaunch_Arguments += '-Updated Yes' } # If Updated switch is passed by updater, append that to our relaunch command.
     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs # Restart as administrator finally.
     Exit 2
 }
@@ -419,8 +419,9 @@ function CheckFor-LatestALOSImageTools {
         [string]$User = "AaravLegendOS",
         [string]$Repo = "alos-image-tools"
     )
-    $ProgressPreference = 'SilentyContinue'
-    if (Test-NetConnection -ComputerName www.github.com -Port 443 -InformationLevel Quiet) {
+    $Client = New-Object System.Net.Sockets.TcpClient
+    try { $Client.Connect("$((Resolve-DnsName -Name github.com).IPAddress)", 443); $Pinged = $true } catch { $Pinged = $false } finally { $Client.Dispose() }
+    if ($Pinged) {
         # Ping the GitHub API to get json data before converting it from json.
         $TagInfo = Invoke-WebRequest -Uri "https://api.github.com/repos/${User}/${Repo}/git/refs/tag" -UseBasicParsing | ConvertFrom-Json
         # And then filter out the reference until only the tag version is recieved.
@@ -434,7 +435,6 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
     $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
-        $ProgressPreference = 'Continue'
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
         Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
         if ($?) {
