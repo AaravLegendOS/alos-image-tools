@@ -436,9 +436,10 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
         Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
         if ($?) {
-            Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
-            $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
-            $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper()
+            Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath # Download zip file.
+            $WebHash = (Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing).Content # Extract SHA256 hash.
+            $WebHash = $Webhash.TrimEnd("`r", "`n") # Trim the newline that exists.
+            $Hash = (Get-FileHash -LiteralPath $MainZipPath -Algorithm SHA256).Hash.ToUpper() # Then compute downloaded file hash to verify.
             # Do a case-sensitive comparison for extra safety.
             if ($Hash -ceq $WebHash) {
                 Expand-Archive -Path "${WorkingDir}\ALOS-ImageTools.zip" -DestinationPath $WorkingDir -Force
@@ -456,7 +457,6 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
                 }
             }
         } else { Error "Sorry! We were unable to update ALOS Image Tools! Please try again later." }
-        Exit 1
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
 # Did you know you can put comments in a hashtable and a powershell custom object?
