@@ -431,7 +431,7 @@ if ((($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_Se
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
-        Copy-Item "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion.ToString())_$(Get-Date -Format "dd/MM/yyyy@HH.mm.ss").ps1"
+        Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
         if ($?) {
             Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath
             $WebHash = Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing
