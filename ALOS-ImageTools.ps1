@@ -457,7 +457,7 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
                     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
                     Exit 0
                 }
-            } else { Error "Error! The hash does not match.`r`n`r`nExpected: ${WebHash}`r`nActual: ${Actual}`r`nUsually, you might have to wait a few more seconds but if not, contact the developer via GitHub issues at:`r`n`r`n${GithubRepo}/issues" }
+            } else { Error "Error! The hash does not match.`r`n`r`nExpected: ${WebHash}`r`nActual: ${Hash}`r`nUsually, you might have to wait a few more seconds but if not, contact the developer via GitHub issues at:`r`n`r`n${GithubRepo}/issues" }
         } else { Error "Sorry! We were unable to update ALOS Image Tools! Please try again later." }
     } elseif ($UpdateChoice -eq "Cancel") { Exit 0 } else { Clear-Host }
 }
@@ -1599,7 +1599,7 @@ function Get-CRC {
         [ValidateSet('CRC32','CRC64')]
         [string]$Algorithm
     )
-    $sevenz = "$WorkingDir\bin\7z.exe"
+    $sevenz = "${WorkingDir}\bin\${Arch}\7z.exe"
     if ($Algorithm -eq 'CRC32') {
         $args = @('h','-scrcCRC32',$Path)
         $expectedLen = 8
@@ -1644,15 +1644,7 @@ function Coalesce {
         [Parameter(Mandatory=$true, ValueFromRemainingArguments=$true)]
         [object[]]$Values
     )
-    foreach ($v in $Values) {
-        if ($null -ne $v) {
-            if ($v -is [string]) {
-                if ($v -ne '') { return $v }
-            } else {
-                return $v
-            }
-        }
-    }
+    foreach ($v in $Values) { if ($null -ne $v) { if ($v -is [string]) { if ($v -ne '') { return $v } } else { return $v } } }
     return $null
 }
 # Function to check if light mode active. Needed to decide if Dark Mode should be enabled.
@@ -5110,5 +5102,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5114
+    Line count: 5106
 #>
