@@ -308,7 +308,9 @@ param(
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
     [switch]$NoHashes,
-    [switch]$ForceUpdate
+    [switch]$ForceUpdate,
+    [switch]$AutoUpdate,
+    [switch]$NoUpdate
 )
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
 # Clear the console screen.
@@ -404,6 +406,7 @@ if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
 # Validate Arguments.
 if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. You passed `"-InstallingWindows`" but forgot to use the `"Apply`" operation. Very silly mistake." }
 if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
+if ($NoUpdate -and $AutoUpdate) { Error "These switches are mutually exclusive." }
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
@@ -432,12 +435,15 @@ function CheckFor-LatestALOSImageTools {
 $NewestVersion = CheckFor-LatestALOSImageTools
 # Compare version and see if update needed. (Needs user's 7-Zip and internet connection to github to work.)
 if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -and (Test-Path -LiteralPath "$User_SevenZ") -and ($Updated -ne "Yes")) -or ($ForceUpdate -and ($Updated -ne "Yes"))) {
-    $UpdateChoice = Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel
+    $UpdateChoice = if ($NoUpdate) { "No" } elseif (($AutoUpdate) -or ($ForceUpdate)) { "Yes" } else { Question "A new version of ALOS Image Tools has been found.`r`n`r`nCurrent Version: ${CurrentVersion}`r`nNewest Version: ${NewestVersion}`r`n`r`nDo you want to update or not?" YesNoCancel }
     if ($UpdateChoice -eq "Yes") {
         Clear-Host
         Write-Host "Updating from ${CurrentVersion} to ${NewestVersion}..."
-        Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
-        if ($?) {
+        if ($ForceUpdate) { $Copied = $true } else {
+            Copy-Item -Path "${WorkingDir}\ALOS-ImageTools.ps1" -Destination "${WorkingDir}\ALOS-ImageTools_Backup_$($CurrentVersion)_$(Get-Date -Format "dd-MM-yyyy@HH.mm.ss").ps1"
+            $Copied = $?
+        }
+        if ($Copied) {
             Invoke-RestMethod -Uri "${GithubRepo}/releases/download/${NewestVersion}/ALOS-ImageTools.zip" -OutFile $MainZipPath # Download zip file.
             $WebHash = (Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/HASH.TXT" -UseBasicParsing).Content # Extract SHA256 hash.
             $WebHash = $Webhash.TrimEnd("`r", "`n") # Trim the newline that exists.
@@ -1861,7 +1867,7 @@ function Extract-ISO {
         [scriptblock]$Error
     )
     $sevenz = Join-Path $WorkingDir "bin\$Arch\7z.exe"
-    if (-not (Test-Path -LiteralPath $sevenz)) { $sevenz = "$env:ProgramFiles\7-Zip\7z.exe" }
+    if (-not (Test-Path -LiteralPath $sevenz)) { $sevenz = $User_SevenZ }
     if (-not (Test-Path -LiteralPath $sevenz)) {
         & $Error "7-Zip does not exist on host system."
         return
@@ -1941,9 +1947,7 @@ function Process-Container {
                     break
                 }
             }
-        } catch {
-            Error $_
-        }
+        } catch { Error $_ }
     } elseif ($Mode -eq "Apply") {
         $progress = @(
             [regex]'^(?<stage>Creating files):\s+(?<done>\d+(?:\.\d+)?)\s+of\s+(?<total>\d+(?:\.\d+)?)\s+\((?<pct>\d+(?:\.\d+)?)%\)\s+done$'
@@ -1969,9 +1973,7 @@ function Process-Container {
                     break
                 }
             }
-        } catch {
-            Error $_
-        }
+        } catch { Error $_ }
     } elseif ($Mode -eq "Split") {
         $progress = @([regex]'^(?<stage>Splitting WIM):\s+(?<done>\d+(?:\.\d+)?)\s+(?<unit>[KMGTPEZY]iB)\s+of\s+(?<total>\d+(?:\.\d+)?)\s+\k<unit>\s+\((?<pct>\d+(?:\.\d+)?)%\)\s+written,\s+part\s+(?<part>\d+)\s+of\s+(?<parts>\d+)\s*$')
         $output = New-Object System.Collections.Generic.List[string]
@@ -1996,9 +1998,7 @@ function Process-Container {
                     }
                 }
             }
-        } catch {
-            Error $_
-        }
+        } catch { Error $_ }
     } else {
         # Will never reach here due to ValidateSet.
         return
@@ -2173,9 +2173,7 @@ function Set-WimImageMetadata {
         )
         if (-not $ok) {
             $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            if ([string]::IsNullOrWhiteSpace($ErrorMessage)) {
-                $ErrorMessage = "WIMGAPI error $Err."
-            }
+            if ([string]::IsNullOrWhiteSpace($ErrorMessage)) { $ErrorMessage = "WIMGAPI error $Err." }
             Error "Unable to change WIM image information.`r`n`r`n$ErrorMessage"
         }
     }
@@ -2207,8 +2205,7 @@ if ($InstallingWindows) { if ($Op -cne "Apply") { Error "Cannot install windows 
 $Path = [Environment]::ExpandEnvironmentVariables($Path.Trim('"'))
 $Host.UI.RawUI.WindowTitle = "$Op In Progress On $Path" # Set the Window Title text.
 $base = [IO.Path]::GetFileNameWithoutExtension($Path) # Get the base filename without the file extension.
-$wimlib = $env:WimManage # Search for the WimManage variable. It may be useful.
-if (-not $wimlib) { $wimlib = Join-Path $WorkingDir "bin\$Arch\wimlib-imagex.exe" } # If not defined as an environment variable, use the default binary.
+$wimlib = "${WorkingDir}\bin\$Arch\wimlib-imagex.exe"
 $testpath = $true
 if ($Op -ceq "SetupProgram" -and $Path -ceq "SetupProgram") { $testpath = $false }
 if ($testpath) { if (-not (Test-Path -LiteralPath $Path)) { Error "Image file, source or directory not found:`r`n$Path" } } # Automatically fail if the path is not valid. Helper for Op "SetupProgram". Do not remove this. It is very important. :(
@@ -3452,7 +3449,7 @@ Windows Registry Editor Version 5.00
         <TextBlock x:Name="PromptLabel" Grid.Row="0" TextWrapping="Wrap" MinHeight="55" Margin="0,0,0,10" Foreground="$FgHex"/>
         <TextBox x:Name="InputBox" Grid.Row="1" Height="26" Margin="0,0,0,15" Background="$BgHex" Foreground="$FgHex"/>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="OkButton" Content="OK" Width="80" Height="30" Margin="0,0,8,0" Background="$BgHex" Foreground="$FgHex"/>
+            <Button x:Name="OkButton" Content="Confirm" Width="80" Height="30" Margin="0,0,8,0" Background="$BgHex" Foreground="$FgHex"/>
             <Button x:Name="CancelButton" Content="Cancel" Width="80" Height="30" Background="$BgHex" Foreground="$FgHex"/>
         </StackPanel>
     </Grid>
@@ -3501,7 +3498,7 @@ Windows Registry Editor Version 5.00
                 $InputBox.BackColor = $DialogBack
                 $InputBox.ForeColor = $DialogFore
                 $OkButton = New-Object System.Windows.Forms.Button
-                $OkButton.Text = 'OK'
+                $OkButton.Text = 'Confirm'
                 $OkButton.Location = New-Object System.Drawing.Point(420, 118)
                 $OkButton.Size = New-Object System.Drawing.Size(80, 30)
                 $OkButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -3639,7 +3636,7 @@ Windows Registry Editor Version 5.00
         }
         function Install-ALOSImageTools {
             $PSExePath = $PSExe -replace '\\', '\\' # \\ is the regex pattern, second \\ is the escaped backslash for registry paths.
-            $ALOSImageTools_Skeleton = Show-PromptDialog -Prompt "Enter the installation path or press ENTER to use the default directory of ${WorkingDir}."
+            $ALOSImageTools_Skeleton = Show-PromptDialog -Prompt "Enter the installation path or click `"Confirm`" to use the default directory of `"${WorkingDir}`"."
             if ($null -eq $ALOSImageTools_Skeleton) { return $false }
             if ([string]::IsNullOrWhiteSpace($ALOSImageTools_Skeleton)) { $ALOSImageTools_Skeleton = $WorkingDir }
             $Root = $ALOSImageTools_Skeleton
@@ -3664,7 +3661,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"wim\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell]
@@ -3672,7 +3669,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\03Mount]
 @="Mount Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\03Mount\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Mount -Path \"%1\""
@@ -3680,35 +3677,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export]
 "MUIVerb"="Export Images..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\04ExportWIM]
 @="To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\04ExportWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\05ExportESD]
 @="To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\05ExportESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\06RecompressWIM]
 @="Recompress"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\06RecompressWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op RecompressWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\09ConvertToESD]
 @="Convert To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\09ConvertToESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ConvertToESD -Path \"%1\""
@@ -3716,71 +3713,70 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.wim\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\12SplitWIM]
 @="Split WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\12SplitWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SplitWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\13DeleteImage]
 @="Delete Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\13DeleteImage\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op DeleteImage -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\14ApplyAndDeleteImage]
 @="Apply And Delete Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\14ApplyAndDeleteImage\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ApplyAndDeleteImage -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\26ChangeBootIndexWIM]
 @="Change Bootable Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\26ChangeBootIndexWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ChangeBootIndexWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\27ChangeImageInfo]
 @="Change WIM Information"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\27ChangeImageInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ChangeImageInfo -Path \"%1\""
@@ -3792,7 +3788,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"esd\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell]
@@ -3801,35 +3797,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export]
 "MUIVerb"="Export Images..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\04ExportWIM]
 @="To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\04ExportWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\05ExportESD]
 @="To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\05ExportESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\07RecompressESD]
 @="Recompress"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\07RecompressESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op RecompressESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\08ConvertToWIM]
 @="Convert To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\08ConvertToWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ConvertToWIM -Path \"%1\""
@@ -3837,36 +3833,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.esd\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows"
@@ -3874,21 +3869,21 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO]
 "MUIVerb"="Create ISO..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\15CreateISOWIM]
 @="With install.wim As Installation Source"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\15CreateISOWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op CreateISOWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\16CreateISOESD]
 @="With install.esd As Installation Source"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\16CreateISOESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op CreateISOESD -Path \"%1\""
@@ -3900,7 +3895,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"swm\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell]
@@ -3909,36 +3904,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.swm\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows"
@@ -3946,21 +3940,21 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join]
 "MUIVerb"="Join SWM..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM]
 @="Into WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD]
 @="Into ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinESD -Path \"%1\""
@@ -3972,7 +3966,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"iso\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell]
@@ -3981,28 +3975,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract]
 "MUIVerb"="Extract..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\17ExtractWIM]
 @="WIM from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\17ExtractWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\18ExtractESD]
 @="ESD from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\18ExtractESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM]
 @="SWM from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
@@ -4014,7 +4008,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"img\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell]
@@ -4023,28 +4017,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract]
 "MUIVerb"="Extract..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\17ExtractWIM]
 @="WIM from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\17ExtractWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\18ExtractESD]
 @="ESD from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\18ExtractESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM]
 @="SWM from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
@@ -4056,28 +4050,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\01Capture]
 @="Capture to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\01Capture\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Capture -Path \"%V\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\02Append]
 @="Append to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\02Append\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Append -Path \"%V\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\runas]
 @="Cleanup WIM Mounts"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\runas\command]
 @="dism.exe /cleanup-wim"
@@ -4089,28 +4083,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\01Capture]
 @="Capture to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\01Capture\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Capture -Path \"%V\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\02Append]
 @="Append to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\02Append\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Append -Path \"%V\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\runas]
 @="Cleanup WIM Mounts"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\runas\command]
 @="dism.exe /cleanup-wim"
@@ -4122,28 +4116,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM]
 @="Image Drive To WIM File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveWIM -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD]
 @="Image Drive To ESD File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveESD -Path \"%1\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM]
 @="Image Drive To SWM File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveSWM -Path \"%1\""
@@ -4170,7 +4164,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"wim\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell]
@@ -4178,7 +4172,7 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\03Mount]
 @="Mount Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\03Mount\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Mount -Path \"%1\" -WPFUI"
@@ -4186,35 +4180,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export]
 "MUIVerb"="Export Images..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\04ExportWIM]
 @="To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\04ExportWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\05ExportESD]
 @="To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\04Export\shell\05ExportESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\06RecompressWIM]
 @="Recompress"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\06RecompressWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op RecompressWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\09ConvertToESD]
 @="Convert To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\09ConvertToESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ConvertToESD -Path \"%1\" -WPFUI"
@@ -4222,71 +4216,70 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.wim\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\12SplitWIM]
 @="Split WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\12SplitWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SplitWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\13DeleteImage]
 @="Delete Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\13DeleteImage\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op DeleteImage -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\14ApplyAndDeleteImage]
 @="Apply And Delete Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\14ApplyAndDeleteImage\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ApplyAndDeleteImage -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\26ChangeBootIndexWIM]
 @="Change Bootable Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\26ChangeBootIndexWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ChangeBootIndexWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\27ChangeImageInfo]
 @="Change WIM Information"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_WIM\shell\27ChangeImageInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ChangeImageInfo -Path \"%1\" -WPFUI"
@@ -4298,7 +4291,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"esd\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell]
@@ -4307,35 +4300,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export]
 "MUIVerb"="Export Images..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\04ExportWIM]
 @="To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\04ExportWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\05ExportESD]
 @="To ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\04Export\shell\05ExportESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExportESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\07RecompressESD]
 @="Recompress"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\07RecompressESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op RecompressESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\08ConvertToWIM]
 @="Convert To WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\08ConvertToWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ConvertToWIM -Path \"%1\" -WPFUI"
@@ -4343,36 +4336,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.esd\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows -WPFUI"
@@ -4380,21 +4372,21 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO]
 "MUIVerb"="Create ISO..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\15CreateISOWIM]
 @="With install.wim As Installation Source"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\15CreateISOWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op CreateISOWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\16CreateISOESD]
 @="With install.esd As Installation Source"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ESD\shell\15CreateISO\shell\16CreateISOESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op CreateISOESD -Path \"%1\" -WPFUI"
@@ -4406,7 +4398,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"swm\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell]
@@ -4415,36 +4407,35 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo]
 "MUIVerb"="Get Info..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10AGetInfo]
 @="With Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10AGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10BGetInfo]
 @="Without Hashes"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\10GetInfo\shell\10BGetInfo\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op GetInfo -Path \"%1\" -NoHashes -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11AApply]
 @="Apply Image"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11AApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply]
 @="Install Windows"
-"HasLUAShield"=""
-"AppliesTo"="System.FileName:\"install.swm\""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows -WPFUI"
@@ -4452,21 +4443,21 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join]
 "MUIVerb"="Join SWM..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM]
 @="Into WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD]
 @="Into ESD"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinESD -Path \"%1\" -WPFUI"
@@ -4478,7 +4469,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"iso\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell]
@@ -4487,28 +4478,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract]
 "MUIVerb"="Extract..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\17ExtractWIM]
 @="WIM from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\17ExtractWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\18ExtractESD]
 @="ESD from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\18ExtractESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM]
 @="SWM from ISO"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
@@ -4520,7 +4511,7 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 "AppliesTo"="System.FileExtension:\"img\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell]
@@ -4529,28 +4520,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract]
 "MUIVerb"="Extract..."
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\17ExtractWIM]
 @="WIM from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\17ExtractWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\18ExtractESD]
 @="ESD from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\18ExtractESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM]
 @="SWM from IMG"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
@@ -4562,28 +4553,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\01Capture]
 @="Capture to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\01Capture\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Capture -Path \"%V\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\02Append]
 @="Append to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\02Append\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Append -Path \"%V\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\runas]
 @="Cleanup WIM Mounts"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\ALOSImageTools\shell\runas\command]
 @="dism.exe /cleanup-wim"
@@ -4595,28 +4586,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\01Capture]
 @="Capture to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\01Capture\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Capture -Path \"%V\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\02Append]
 @="Append to WIM"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\02Append\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Append -Path \"%V\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\runas]
 @="Cleanup WIM Mounts"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ALOSImageTools\shell\runas\command]
 @="dism.exe /cleanup-wim"
@@ -4628,28 +4619,28 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools]
 "MUIVerb"="ALOS Image Tools"
 "SubCommands"=""
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell]
 @=""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM]
 @="Image Drive To WIM File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveWIM -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD]
 @="Image Drive To ESD File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveESD -Path \"%1\" -WPFUI"
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM]
 @="Image Drive To SWM File"
-"HasLUAShield"=""
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveSWM -Path \"%1\" -WPFUI"
@@ -5102,5 +5093,5 @@ Show-Finished
     Run either setup_wf.exe or setup_wpf.exe in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5106
+    Line count: 5097
 #>
