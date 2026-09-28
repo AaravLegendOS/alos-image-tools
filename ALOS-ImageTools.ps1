@@ -4720,14 +4720,15 @@ Windows Registry Editor Version 5.00
                     "isocreator\wim\bin\bin64\wimlib-imagex.exe"
                     "regfiles\ALOS-ImageTools (Remove) (Retain Classic Menu).reg"
                     "regfiles\ALOS-ImageTools (Remove) (Revert To Modern Menu).reg"
-                    "regfiles\ALOS-ImageTools.reg"
+                    "regfiles\ALOS-ImageTools_WF.reg"
+                    "regfiles\ALOS-ImageTools_WPF.reg"
                 )
                 $PresentFiles = Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Root.Length + 1) }
                 $Missing = $Files | Where-Object { $_ -notin $PresentFiles }
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "092005100C2BC4A5DAB3CBA786AFDBCBB9117C414A0F05BC38C167B31103FB11") { return $false }
+                    if ($Hash -ne "D5A862A0A01F6CCEF2E1BCCEC89271AE95544E7A15CD2141F3565ED38FAE432B") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -5110,5 +5111,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5114
+    Line count: 5115
 #>
