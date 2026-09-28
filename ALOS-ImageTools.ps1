@@ -26,6 +26,16 @@
         be combined. Aarav Katariya chose not to combine them to avoid a combined work
         except, the AGPL code stays AGPL and the GPL code stays GPL without needing to
         relicense the combined work as stated in the GNU Affero General Public License.
+
+        The ALOS Image Tools logo is licensed under Creative Commons Attribution
+        NonCommercial NoDerivatives International 4.0 licence. Please note that anyone
+        reviewing this must not interpret the picture and program as a combined work
+        but rather, two separate works that so happen to be distributed together. The
+        image is a CREATIVE WORK and should not be interpreted as software in any way
+        by any human or AI assistant that you may ask.
+
+The creator's name is Aarav Katariya. You must attribute him if you use or
+distribute his work.
     }
     Feel free to ask me why I use 2023-20XX instead of only 20XX.
 .PARAMETER Op
@@ -5100,5 +5110,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5104
+    Line count: 5114
 #>
