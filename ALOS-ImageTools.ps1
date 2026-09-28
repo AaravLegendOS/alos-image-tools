@@ -341,9 +341,7 @@ if ($WPFUI) {
         $app = [System.Windows.Application]::new()
         $app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
         $script:WpfApp = $app
-    } else {
-        $script:WpfApp = [System.Windows.Application]::Current
-    }
+    } else { $script:WpfApp = [System.Windows.Application]::Current }
 }
 # Enable visual styles for Windows Forms.
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -352,12 +350,37 @@ function Question {
     param(
         [Parameter(Mandatory)]
         [string]$Message,
-        [ValidateSet("YesNo","YesNoCancel","OKCancel")]
+        [ValidateSet("YesNo","YesNoCancel","OKCancel","AbortRetryIgnore")]
         [string]$Buttons = "YesNo",
         [ValidateSet("Information","Info","Warning","Warn","Error","Err","Question")]
         [string]$Type = "Question"
     )
-    if ($WPFUI) { return [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) } else { return [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type) }
+    if ($WPFUI) {
+        $Answer = [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type)
+        # WPF enums are quite limited.
+        switch ($Answer) {
+            [System.Windows.MessageResult]::OK     { return "OK" }
+            [System.Windows.MessageResult]::Yes    { return "Yes" }
+            [System.Windows.MessageResult]::No     { return "No" }
+            [System.Windows.MessageResult]::Cancel { return "Cancel" }
+            [System.Windows.MessageResult]::None   { return "None" }
+            default                                { return $null }
+        }
+    } else {
+        $Answer = [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type)
+        # WinForms enums are not that limited.
+        switch ($Answer) {
+            [System.Windows.Forms.DialogResult]::OK     { return "OK" }
+            [System.Windows.Forms.DialogResult]::Yes    { return "Yes" }
+            [System.Windows.Forms.DialogResult]::No     { return "No" }
+            [System.Windows.Forms.DialogResult]::Cancel { return "Cancel" }
+            [System.Windows.Forms.DialogResult]::Abort  { return "Abort" }
+            [System.Windows.Forms.DialogResult]::Retry  { return "Retry" }
+            [System.Windows.Forms.DialogResult]::Ignore { return "Ignore" }
+            [System.Windows.Forms.DialogResult]::None   { return "None" }
+            default                                     { return $null }
+        }
+    }
 }
 # Function to show error message and exit.
 function Error($Message) {
@@ -380,7 +403,7 @@ function Set-Progress {
         [ValidateRange(0,100)]
         [int]$PercentComplete,
         [Parameter(Mandatory=$false)]
-        [uint16]$ProgID = 1
+        [uint]$ProgID = 1
     )
     # Clamp values to between 0 and 100.
     if ($PercentComplete -lt 0) { $PercentComplete = 0 } # Ensure no values below 0.
@@ -406,7 +429,7 @@ if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
 # Validate Arguments.
 if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. You passed `"-InstallingWindows`" but forgot to use the `"Apply`" operation. Very silly mistake." }
 if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
-if ($NoUpdate -and $AutoUpdate) { Error "These switches are mutually exclusive." }
+if (($NoUpdate -and $AutoUpdate) -or ($AutoUpdate -and $ForceUpdate) -or ($NoUpdate -and $ForceUpdate)) { Error "These switches are mutually exclusive." }
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
@@ -1170,38 +1193,30 @@ function Enable-DarkMode {
                 $ctrl.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
                 try { $ctrl.FlatAppearance.BorderColor = $colorBorder } catch {}
                 try { $ctrl.Font = New-Object System.Drawing.Font($ctrl.Font.FontFamily, $ctrl.Font.Size) } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.Label]) {
+            } elseif ($ctrl -is [System.Windows.Forms.Label]) {
                 $ctrl.ForeColor = $colorText
                 try { $ctrl.BackColor = 'Transparent' } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.Panel] -or $ctrl -is [System.Windows.Forms.GroupBox]) {
+            } elseif ($ctrl -is [System.Windows.Forms.Panel] -or $ctrl -is [System.Windows.Forms.GroupBox]) {
                 $ctrl.BackColor = $colorPanel
                 $ctrl.ForeColor = $colorText
-            }
-            elseif ($ctrl -is [System.Windows.Forms.ListBox]) {
+            } elseif ($ctrl -is [System.Windows.Forms.ListBox]) {
                 $ctrl.BackColor = $colorAltPanel
                 $ctrl.ForeColor = $colorText
                 try { $ctrl.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.TextBox]) {
+            } elseif ($ctrl -is [System.Windows.Forms.TextBox]) {
                 $ctrl.BackColor = $colorAltPanel
                 $ctrl.ForeColor = $colorText
                 try { $ctrl.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.RichTextBox]) {
+            } elseif ($ctrl -is [System.Windows.Forms.RichTextBox]) {
                 $ctrl.BackColor = $colorAltPanel
                 $ctrl.ForeColor = $colorText
-            }
-            elseif ($ctrl -is [System.Windows.Forms.NumericUpDown] -or $ctrl -is [System.Windows.Forms.ComboBox]) {
+            } elseif ($ctrl -is [System.Windows.Forms.NumericUpDown] -or $ctrl -is [System.Windows.Forms.ComboBox]) {
                 $ctrl.BackColor = $colorAltPanel
                 $ctrl.ForeColor = $colorText
-            }
-            elseif ($ctrl -is [System.Windows.Forms.CheckBox] -or $ctrl -is [System.Windows.Forms.RadioButton]) {
+            } elseif ($ctrl -is [System.Windows.Forms.CheckBox] -or $ctrl -is [System.Windows.Forms.RadioButton]) {
                 $ctrl.ForeColor = $colorText
                 try { $ctrl.BackColor = 'Transparent' } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.DataGridView]) {
+            } elseif ($ctrl -is [System.Windows.Forms.DataGridView]) {
                 $ctrl.BackgroundColor = $colorPanel
                 try {
                     $ctrl.DefaultCellStyle.BackColor = $colorAltPanel
@@ -1210,19 +1225,16 @@ function Enable-DarkMode {
                 } catch {}
                 try { $ctrl.ColumnHeadersDefaultCellStyle.BackColor = $colorPanel } catch {}
                 try { $ctrl.ColumnHeadersDefaultCellStyle.ForeColor = $colorText } catch {}
-            }
-            elseif ($ctrl -is [System.Windows.Forms.ListView]) {
+            } elseif ($ctrl -is [System.Windows.Forms.ListView]) {
                 $ctrl.BackColor = $colorAltPanel
                 $ctrl.ForeColor = $colorText
-            }
-            elseif ($ctrl -is [System.Windows.Forms.ToolStrip]) {
+            } elseif ($ctrl -is [System.Windows.Forms.ToolStrip]) {
                 $ctrl.BackColor = $colorPanel
                 foreach ($item in $ctrl.Items) {
                     try { $item.ForeColor = $colorText } catch {}
                     try { if ($item -is [System.Windows.Forms.ToolStripButton] -or $item -is [System.Windows.Forms.ToolStripLabel]) { $item.BackColor = $colorPanel } } catch {}
                 }
-            }
-            else {
+            } else {
                 try { $ctrl.BackColor = $colorAltPanel } catch {}
                 try { $ctrl.ForeColor = $colorText } catch {}
             }
@@ -1403,7 +1415,7 @@ public static class WPF_FolderBrowser
 '@
         }
         $Result = [WPF_FolderBrowser]::PickFolder($title, $default)
-        if ($Result -and (Test-Path -LiteralPath $Result -PathType Container)) { return $result }
+        if ($Result -and (Test-Path -LiteralPath $Result -PathType Container)) { return $Result }
         Error "Operation cancelled."
     } else {
         $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -1474,6 +1486,7 @@ function Pick-Index {
     $Form.StartPosition = 'CenterScreen'
     $Form.MinimizeBox = $false
     $Form.MaximizeBox = $false
+    $Form.TopMost = $true
     $Form.FormBorderStyle = 'FixedDialog'
     $Form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
     $Form.Padding = '8,8,8,8'
@@ -1545,8 +1558,7 @@ function Pick-Index {
             $Form.DialogResult = [System.Windows.Forms.DialogResult]::OK
             $Form.Close()
         })
-    }
-    else { $script:ExportAllChosen = $false }
+    } else { $script:ExportAllChosen = $false }
     $panel.Add_Resize({
         param($s, $e)
         $p = $s
@@ -1557,8 +1569,7 @@ function Pick-Index {
             $ExportAll.Left = $cancel.Left - $ExportAll.Width - $spacing
             $ExportAll.Top = 8
             $ok.Left = $ExportAll.Left - $ok.Width - $spacing
-        }
-        else { $ok.Left = $cancel.Left - $ok.Width - $spacing }
+        } else { $ok.Left = $cancel.Left - $ok.Width - $spacing }
         $ok.Top = 8
     })
     $list.Add_DoubleClick({
@@ -1579,8 +1590,7 @@ function Pick-Index {
         $ExportAll.Left = $cancel.Left - $ExportAll.Width - $spacing
         $ExportAll.Top = 8
         $ok.Left = $ExportAll.Left - $ok.Width - $spacing
-    }
-    else { $ok.Left = $cancel.Left - $ok.Width - $spacing }
+    } else { $ok.Left = $cancel.Left - $ok.Width - $spacing }
     $ok.Top = 8
     $res = $Form.ShowDialog()
     if ($res -ne [System.Windows.Forms.DialogResult]::OK) { Error "No index selected." }
@@ -1590,13 +1600,12 @@ function Pick-Index {
         foreach ($i in $list.SelectedIndices) { $sel += $entries[$i].Index }
         if (-not $sel) { Error "No index selected." }
         return ,$sel
-    }
-    else {
+    } else {
         if ($list.SelectedIndex -lt 0) { Error "No index selected." }
         return [int]$entries[$list.SelectedIndex].Index
     }
 }
-# Function to calculate the CRC32 or CRC64 hash. It depends on 7-Zip console though. I could not implement CRC myself!
+# Function to calculate the CRC32 or CRC64 hash. It depends on 7-Zip console though. PowerShell does have native CRC32 but not native CRC64!
 function Get-CRC {
     param(
         [Parameter(Mandatory=$true)]
@@ -2005,7 +2014,7 @@ function Process-Container {
     }
     if ($LASTEXITCODE -ne 0) { throw "The operation failed with exit code $LASTEXITCODE.`r`n`r`n$output" }
     Complete-Progress $Activity 2
-    return ($output | Out-File -FilePath $env:USERPROFILE\Desktop\wimlib-imagex_output.log -Encoding 'UTF8' -Append -NoClobber)
+    return ($output | Out-File -FilePath $env:USERPROFILE\Desktop\wimlib-imagex_output.log -Encoding 'UTF8' -Append)
 }
 # Function to find all split wim parts.
 function Get-SplitWimParts {
@@ -2225,7 +2234,7 @@ switch -CaseSensitive ($Op) {
         $CapArgs = @('capture', $src, $dest, $name, $description, '--compress=LZX', '--verbose', "--flags=$flags")
         $DestName = [System.IO.Path]::GetFileName($dest)
         $result = Question -Message "Make the destination WIM bootable?" -Buttons YesNoCancel
-        if ($result -eq "Yes") { $CapArgs += "--boot" } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) { Error "Operation cancelled." }
+        if ($result -eq "Yes") { $CapArgs += "--boot" } elseif ($result -eq "Cancel") { Error "Operation cancelled." }
         Set-Progress "Capture" "Capturing $src to $DestName" 50
         try {
             $null = Process-Container -ExePath $wimlib -Arguments $CapArgs -Activity "Capture" -Mode "Capture And Export"
@@ -2253,7 +2262,7 @@ switch -CaseSensitive ($Op) {
         if ($result -eq "Yes") {
             $AppendArgs += "--boot"
             $bootwim = $true
-        } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        } elseif ($result -eq "Cancel") {
             Error "Operation cancelled."
         }
         Set-Progress "Append" "Appending $src to $WimName" 50
@@ -2353,9 +2362,7 @@ switch -CaseSensitive ($Op) {
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported WIM as bootable."
-        } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
-            Error "Operation cancelled."
-        }
+        } elseif ($result -eq "Cancel") { Error "Operation cancelled." }
         $total = $indices.Count
         $i = 0
         $failures = @()
@@ -2423,9 +2430,7 @@ switch -CaseSensitive ($Op) {
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported ESD as bootable."
-        } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
-            Error "Operation cancelled."
-        }
+        } elseif ($result -eq "Cancel") { Error "Operation cancelled." }
         $tmpWim = Join-Path $folder ("${base}_tmp.wim")
         if (Test-Path -LiteralPath $tmpWim) { Remove-Item -LiteralPath $tmpWim -Force -ErrorAction SilentlyContinue }
         $total = $indices.Count
@@ -2869,7 +2874,7 @@ switch -CaseSensitive ($Op) {
                 Remove-Item $Path -Force
                 Rename-Item -Path $out -NewName $Path
             }
-        } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        } elseif ($result -eq "Cancel") {
             Error "Operation cancelled."
         } else {
             try {
@@ -2898,7 +2903,7 @@ switch -CaseSensitive ($Op) {
                 Remove-Item $Path -Force
                 Rename-Item -Path $out -NewName $Path
             }
-        } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        } elseif ($result -eq "Cancel") {
             Error "Operation cancelled."
         } else {
             try {
@@ -4658,6 +4663,8 @@ Windows Registry Editor Version 5.00
                 Remove-Item -LiteralPath $RegFile -Force -ErrorAction SilentlyContinue
                 Stop-Process -Name explorer -Force | Out-Null
                 $ZipPath = Join-Path $Root 'ALOS-ImageTools_Files.zip'
+                # Copy if the installation directory is not the same as the root.
+                if ($Root -ine $WorkingDir) { Copy-Item -Path "${WorkingDir}\ALOS_Image_Tools.ico" -Destination $Root }
                 $Files = @(
                     "bin\AMD64\7z.dll"
                     "bin\AMD64\7z.exe"
@@ -5090,8 +5097,8 @@ Windows Registry Editor Version 5.00
 Show-Finished
 <#
     End of program. All credits on ALOS Image Tools goes to Aarav Katariya.
-    Run either setup_wf.exe or setup_wpf.exe in the same folder or just
+    Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5097
+    Line count: 5104
 #>
