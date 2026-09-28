@@ -369,26 +369,26 @@ function Question {
         $Answer = [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type)
         # WPF enums are quite limited.
         switch ($Answer) {
-            [System.Windows.MessageResult]::OK     { return "OK" }
-            [System.Windows.MessageResult]::Yes    { return "Yes" }
-            [System.Windows.MessageResult]::No     { return "No" }
-            [System.Windows.MessageResult]::Cancel { return "Cancel" }
-            [System.Windows.MessageResult]::None   { return "None" }
-            default                                { return $null }
+            ([System.Windows.MessageBoxResult]::OK)     { return "OK" }
+            ([System.Windows.MessageBoxResult]::Yes)    { return "Yes" }
+            ([System.Windows.MessageBoxResult]::No)     { return "No" }
+            ([System.Windows.MessageBoxResult]::Cancel) { return "Cancel" }
+            ([System.Windows.MessageBoxResult]::None)   { return "None" }
+            default                                     { return "Unknown_WPF" }
         }
     } else {
         $Answer = [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',$Buttons,$Type)
         # WinForms enums are not that limited.
         switch ($Answer) {
-            [System.Windows.Forms.DialogResult]::OK     { return "OK" }
-            [System.Windows.Forms.DialogResult]::Yes    { return "Yes" }
-            [System.Windows.Forms.DialogResult]::No     { return "No" }
-            [System.Windows.Forms.DialogResult]::Cancel { return "Cancel" }
-            [System.Windows.Forms.DialogResult]::Abort  { return "Abort" }
-            [System.Windows.Forms.DialogResult]::Retry  { return "Retry" }
-            [System.Windows.Forms.DialogResult]::Ignore { return "Ignore" }
-            [System.Windows.Forms.DialogResult]::None   { return "None" }
-            default                                     { return $null }
+            ([System.Windows.Forms.DialogResult]::OK)     { return "OK" }
+            ([System.Windows.Forms.DialogResult]::Yes)    { return "Yes" }
+            ([System.Windows.Forms.DialogResult]::No)     { return "No" }
+            ([System.Windows.Forms.DialogResult]::Cancel) { return "Cancel" }
+            ([System.Windows.Forms.DialogResult]::Abort)  { return "Abort" }
+            ([System.Windows.Forms.DialogResult]::Retry)  { return "Retry" }
+            ([System.Windows.Forms.DialogResult]::Ignore) { return "Ignore" }
+            ([System.Windows.Forms.DialogResult]::None)   { return "None" }
+            default                                       { return "Unknown_WF" }
         }
     }
 }
@@ -413,7 +413,7 @@ function Set-Progress {
         [ValidateRange(0,100)]
         [int]$PercentComplete,
         [Parameter(Mandatory=$false)]
-        [uint]$ProgID = 1
+        [uint32]$ProgID = 1
     )
     # Clamp values to between 0 and 100.
     if ($PercentComplete -lt 0) { $PercentComplete = 0 } # Ensure no values below 0.
@@ -427,7 +427,7 @@ function Complete-Progress {
         [Parameter(Mandatory)]
         [string]$Activity,
         [Parameter(Mandatory=$false)]
-        [uint16]$ProgID = 1
+        [uint32]$ProgID = 1
     )
     Write-Progress -Id $ProgID -Activity $Activity -Status "Completed" -PercentComplete 100 -Completed
 }
@@ -2975,7 +2975,7 @@ switch -CaseSensitive ($Op) {
         $indices = $indices | Sort-Object -Descending
         $total = $indices.Count
         $response = Question "Do you want to proceed? You cannot reverse this action!"
-        if ($response -ne "Yes") { Error "You cancelled the operation." }
+        if ($response -ne "Yes") { Error "You cancelled the operation. $response" }
         $i = 0
         foreach ($idx in $indices) {
             $i++
