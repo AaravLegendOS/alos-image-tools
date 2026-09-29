@@ -4088,6 +4088,13 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
 
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG]
+@="CLG from ISO"
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG\command]
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
+
 ; ================================================
 ; IMG file submenu.
 ; ================================================
@@ -4128,6 +4135,13 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM\command]
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG]
+@="CLG from ISO"
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
 
 ; ================================================
@@ -4591,6 +4605,13 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\19ExtractSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
 
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG]
+@="CLG from ISO"
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG\command]
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
+
 ; ================================================
 ; IMG file submenu.
 ; ================================================
@@ -4631,6 +4652,13 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\19ExtractSWM\command]
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG]
+@="CLG from ISO"
+"Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
+
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
 
 ; ================================================
@@ -4801,7 +4829,7 @@ Windows Registry Editor Version 5.00
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "A127FDEAE458B56214BD0985245A967ED7E2443D12421F0E8F012917CD8546D0") { return $false }
+                    if ($Hash -ne "10F3B2ED483B953450399A47DE3A995AF340056436180D6760E8A9217D297CBD") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -5184,5 +5212,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5188
+    Line count: 5216
 #>
