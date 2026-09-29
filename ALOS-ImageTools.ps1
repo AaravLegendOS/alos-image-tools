@@ -58,6 +58,7 @@
         ExtractWIM - Extract embedded WIM files from a container.
         ExtractESD - Extract embedded ESD files from a container.
         ExtractSWM - Extract embedded SWM files from a container.
+        ExtractCLG - Extract embedded CLG files from a container. (Primarily from Vista and 7 ISO's.)
         CreateISOWIM - Create bootable ISO from ESD file using install.wim as the install source.
         CreateISOESD - Create bootable ISO from ESD file using install.esd as the install source.
         GetInfo - Display detailed image information and file hashes.
@@ -139,6 +140,9 @@
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op ExtractSWM -Path "C:\image.iso"
     Extracts embedded SWM files from a container.
+.EXAMPLE
+    .\ALOS-ImageTools.ps1 -Op ExtractCLG -Path "C:\Win7_Ultimate.iso"
+    Extracts embedded CLG files from a container. (Primarily from Vista and 7 ISO's.)
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op CreateISOWIM -Path "C:\install.esd"
     Creates a bootable ISO with install.wim as installation source.
@@ -309,7 +313,7 @@ xml                          System.Xml.XmlDocument
 [CmdletBinding()]
 param(
     [Parameter(HelpMessage="What operation do you want to do?")]
-    [ValidateSet('Capture','Append','Mount','ExportWIM','ExportESD','RecompressWIM','RecompressESD','ConvertToWIM','ConvertToESD','GetInfo','Apply','SplitWIM','DeleteImage','ApplyAndDeleteImage','CreateISOWIM','CreateISOESD','ExtractWIM','ExtractESD','ExtractSWM','SaveWIM','SaveESD','SaveSWM','JoinWIM','JoinESD','ChangeBootIndexWIM','ChangeImageInfo','SetupProgram')]
+    [ValidateSet('Capture','Append','Mount','ExportWIM','ExportESD','RecompressWIM','RecompressESD','ConvertToWIM','ConvertToESD','GetInfo','Apply','SplitWIM','DeleteImage','ApplyAndDeleteImage','CreateISOWIM','CreateISOESD','ExtractWIM','ExtractESD','ExtractSWM','ExtractCLG','SaveWIM','SaveESD','SaveSWM','JoinWIM','JoinESD','ChangeBootIndexWIM','ChangeImageInfo','SetupProgram')]
     [string]$Op = 'SetupProgram',
     [Parameter(HelpMessage="Where is your image file or directory?")]
     [string]$Path = 'SetupProgram',
@@ -941,8 +945,11 @@ namespace ALOSImageTools
             IntPtr hWim,
             uint imageIndex,
             string name,
+            string displayName,
             string description,
+            string displayDescription,
             string flags,
+            bool separateND,
             out string error)
         {
             error = null;
@@ -1022,7 +1029,7 @@ namespace ALOSImageTools
                     doc,
                     image,
                     "DISPLAYNAME",
-                    name);
+                    separateND ? displayName : name);
                 SetElementValue(
                     doc,
                     image,
@@ -1032,7 +1039,7 @@ namespace ALOSImageTools
                     doc,
                     image,
                     "DISPLAYDESCRIPTION",
-                    description);
+                    separateND ? displayDescription : description);
                 SetElementValue(
                     doc,
                     image,
@@ -1064,15 +1071,18 @@ namespace ALOSImageTools
                                 : verifyName.InnerText);
                         return false;
                     }
+                }
+                if (separateND && displayName != null)
+                {
                     if (verifyDisplayName == null ||
                         !String.Equals(
                             verifyDisplayName.InnerText,
-                            name,
+                            displayName,
                             StringComparison.Ordinal))
                     {
                         error = String.Format(
                             "Failed to update DISPLAYNAME before writing. Expected '{0}', actual '{1}'.",
-                            name,
+                            displayName,
                             verifyDisplayName == null
                                 ? "<missing>"
                                 : verifyDisplayName.InnerText);
@@ -1095,15 +1105,18 @@ namespace ALOSImageTools
                                 : verifyDescription.InnerText);
                         return false;
                     }
+                }
+                if (separateND && displayDescription != null)
+                {
                     if (verifyDisplayDescription == null ||
                         !String.Equals(
                             verifyDisplayDescription.InnerText,
-                            description,
+                            displayDescription,
                             StringComparison.Ordinal))
                     {
                         error = String.Format(
                             "Failed to update DISPLAYDESCRIPTION before writing. Expected '{0}', actual '{1}'.",
-                            description,
+                            displayDescription,
                             verifyDisplayDescription == null
                                 ? "<missing>"
                                 : verifyDisplayDescription.InnerText);
@@ -1875,7 +1888,7 @@ function Extract-ISO {
         [Parameter(Mandatory)]
         [string]$Path,
         [Parameter(Mandatory)]
-        [ValidateSet('wim','esd','swm','all')]
+        [ValidateSet('wim','esd','swm','clg','all')]
         [string]$Extension,
         [Parameter(Mandatory)]
         [string]$WorkingDir,
@@ -1916,7 +1929,7 @@ function Extract-ISO {
     $exit = $LASTEXITCODE
     if ($exit -ne 0) {
         & $SetProgress $Op "Extraction failed" 100
-        & $Error "Extraction failed (exit $exit).`r`nOutput:`r`n$($raw -join "`r`n")"
+        & $Error "Extraction failed (exit ${exit}).`r`nOutput:`r`n$raw"
         return
     }
     $found = Get-ChildItem -Path $ImgDir -Recurse -Filter "*.$Extension" -File -ErrorAction SilentlyContinue
@@ -2168,7 +2181,10 @@ function Set-WimImageMetadata {
         [ulong]$Index,
         [string]$Name,
         [string]$Description,
-        [string]$Flags
+        [string]$Flags,
+        [string]$DisplayName,
+        [string]$DisplayDescription,
+        [switch]$SeparateND
     )
     [uint32]$CreationResult = 0
     $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
@@ -2189,8 +2205,11 @@ function Set-WimImageMetadata {
             $WIMGAPI,
             $Index,
             $Name,
+            $DisplayName,
             $Description,
+            $DisplayDescription,
             $Flags,
+            [bool]$SeparateND,
             [ref]$ErrorMessage
         )
         if (-not $ok) {
@@ -3053,6 +3072,9 @@ switch -CaseSensitive ($Op) {
     'ExtractSWM' {
         Extract-ISO -Path $Path -Extension 'swm' -WorkingDir $WorkingDir -SetProgress ${function:Set-Progress} -CompleteProgress ${function:Complete-Progress} -Info ${function:Info} -Error ${function:Error}
     }
+    'ExtractCLG' {
+        Extract-ISO -Path $Path -Extension 'clg' -WorkingDir $WorkingDir -SetProgress ${function:Set-Progress} -CompleteProgress ${function:Complete-Progress} -Info ${function:Info} -Error ${function:Error}
+    }
     'SaveWIM' {
         Info "You can choose to save a drive into a new wimfile. If you close the dialog, you can choose to save a drive into an existing wimfile."
         Set-Progress "SaveWIM" "Choosing destination WIM" 15
@@ -3239,52 +3261,70 @@ switch -CaseSensitive ($Op) {
         Set-Progress $Op "Acquire the metadata of ${Index}..." 55
         $Metadata = Get-WimImageMetadata -WimPath $Path -Index $Index
         $CurrentName = $Metadata.Name
+        $CurrentDisplayName = $Metadata.DisplayName
         $CurrentDescription = $Metadata.Description
+        $CurrentDisplayDescription = $Metadata.DisplayDescription
         $CurrentFlags = $Metadata.Flags
         Clear-Host
         $WinForm = New-Object System.Windows.Forms.Form
         $WinForm.Text = "WIM Information Changer - Index $Index"
         $WinForm.Width = 700
-        $WinForm.Height = 330
+        $WinForm.Height = 430
         $WinForm.StartPosition = 'CenterScreen'
         $WinForm.FormBorderStyle = 'FixedDialog'
         $WinForm.MaximizeBox = $false
         $WinForm.MinimizeBox = $false
+        $WinForm.ShowInTaskbar = $false
         $WinForm.Padding = '10,10,10,10'
         $WinForm.Font = New-Object System.Drawing.Font('Segoe UI',9)
         $Table = New-Object System.Windows.Forms.TableLayoutPanel
         $Table.Dock = 'Fill'
         $Table.ColumnCount = 2
-        $Table.RowCount = 6
-        $Table.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Absolute,130)))
+        $Table.RowCount = 9
+        $Table.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Absolute,160)))
         $Table.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,100)))
-        for ($r = 0; $r -lt 6; $r++) { $Table.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
-        $labels = @('Image index:', 'Name:', 'Description:', 'Flags:', '')
+        for ($r = 0; $r -lt 9; $r++) { $Table.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize))) }
         $IndexLabel = New-Object System.Windows.Forms.Label
         $IndexLabel.Text = "$Index"
         $IndexLabel.AutoSize = $true
         $NameLabel = New-Object System.Windows.Forms.Label
         $NameLabel.Text = 'Name:'
         $NameLabel.AutoSize = $true
+        $DisplayNameLabel = New-Object System.Windows.Forms.Label
+        $DisplayNameLabel.Text = 'Display name:'
+        $DisplayNameLabel.AutoSize = $true
         $DescLabel = New-Object System.Windows.Forms.Label
         $DescLabel.Text = 'Description:'
         $DescLabel.AutoSize = $true
+        $DisplayDescLabel = New-Object System.Windows.Forms.Label
+        $DisplayDescLabel.Text = 'Display description:'
+        $DisplayDescLabel.AutoSize = $true
         $FlagsLabel = New-Object System.Windows.Forms.Label
         $FlagsLabel.Text = 'Flags:'
         $FlagsLabel.AutoSize = $true
         $NameBox = New-Object System.Windows.Forms.TextBox
         $NameBox.Dock = 'Fill'
         $NameBox.Text = $CurrentName
+        $DisplayNameBox = New-Object System.Windows.Forms.TextBox
+        $DisplayNameBox.Dock = 'Fill'
+        $DisplayNameBox.Text = $CurrentDisplayName
         $DescBox = New-Object System.Windows.Forms.TextBox
         $DescBox.Dock = 'Fill'
         $DescBox.Text = $CurrentDescription
+        $DisplayDescBox = New-Object System.Windows.Forms.TextBox
+        $DisplayDescBox.Dock = 'Fill'
+        $DisplayDescBox.Text = $CurrentDisplayDescription
         $FlagsBox = New-Object System.Windows.Forms.TextBox
         $FlagsBox.Dock = 'Fill'
         $FlagsBox.Text = $CurrentFlags
+        $SeparateNDCheck = New-Object System.Windows.Forms.CheckBox
+        $SeparateNDCheck.Text = 'Edit display name and display description independently'
+        $SeparateNDCheck.AutoSize = $true
+        $SeparateNDCheck.Checked = $false
         $Hint = New-Object System.Windows.Forms.Label
-        $Hint.Text = 'You need to edit the above values. This will then change the metadata of your wimfile. Editing name and description also edits the display name and display description.'
         $Hint.AutoSize = $true
         $Hint.MaximumSize = New-Object System.Drawing.Size(520,0)
+        $Hint.Text = if ($SeparateNDCheck.Checked) { 'You can now edit the display name and display description independently of the internal name and description. Go on! Customise more!' } else { 'Your display name and display description are synced to your internal name and description entered in the text fields.' }
         $Buttons = New-Object System.Windows.Forms.FlowLayoutPanel
         $Buttons.Dock = 'Fill'
         $Buttons.FlowDirection = 'RightToLeft'
@@ -3300,18 +3340,39 @@ switch -CaseSensitive ($Op) {
         $Buttons.Controls.Add($OK)
         $Buttons.Controls.Add($Cancel)
         $Table.Controls.Add($IndexLabel,0,0)
-        $Table.Controls.Add((New-Object System.Windows.Forms.Label),0,1)
-        $Table.GetControlFromPosition(0,1).Text = 'Name:'
-        $Table.GetControlFromPosition(0,1).AutoSize = $true
+        $Table.Controls.Add($NameLabel,0,1)
         $Table.Controls.Add($NameBox,1,1)
-        $Table.Controls.Add($DescLabel,0,2)
-        $Table.Controls.Add($DescBox,1,2)
-        $Table.Controls.Add($FlagsLabel,0,3)
-        $Table.Controls.Add($FlagsBox,1,3)
-        $Table.Controls.Add($Hint,0,4)
+        $Table.Controls.Add($DisplayNameLabel,0,2)
+        $Table.Controls.Add($DisplayNameBox,1,2)
+        $Table.Controls.Add($DescLabel,0,3)
+        $Table.Controls.Add($DescBox,1,3)
+        $Table.Controls.Add($DisplayDescLabel,0,4)
+        $Table.Controls.Add($DisplayDescBox,1,4)
+        $Table.Controls.Add($FlagsLabel,0,5)
+        $Table.Controls.Add($FlagsBox,1,5)
+        $Table.Controls.Add($SeparateNDCheck,0,6)
+        $Table.SetColumnSpan($SeparateNDCheck,2)
+        $Table.Controls.Add($Hint,0,7)
         $Table.SetColumnSpan($Hint,2)
-        $Table.Controls.Add($Buttons,0,5)
+        $Table.Controls.Add($Buttons,0,8)
         $Table.SetColumnSpan($Buttons,2)
+        $UpdateSeparateNDControls = {
+            $VisibleExtended = $SeparateNDCheck.Checked
+            $DisplayNameLabel.Visible = $VisibleExtended
+            $DisplayNameBox.Visible = $VisibleExtended
+            $DisplayDescLabel.Visible = $VisibleExtended
+            $DisplayDescBox.Visible = $VisibleExtended
+            $Table.RowStyles[2].SizeType = if ($VisibleExtended) { [System.Windows.Forms.SizeType]::AutoSize } else { [System.Windows.Forms.SizeType]::Absolute }
+            $Table.RowStyles[2].Height = if ($VisibleExtended) { 0 } else { 0 }
+            $Table.RowStyles[4].SizeType = if ($VisibleExtended) { [System.Windows.Forms.SizeType]::AutoSize } else { [System.Windows.Forms.SizeType]::Absolute }
+            $Table.RowStyles[4].Height = if ($VisibleExtended) { 0 } else { 0 }
+            $Hint.Text = if ($VisibleExtended) { 'Separate mode is enabled. Name and display name, and description and display description, can be edited independently.' } else { 'By default, editing name and description also edits the display name and display description. Enable separate mode above to edit them independently.' }
+            $Table.PerformLayout()
+            $WinForm.PerformLayout()
+        }
+        $SeparateNDCheck.Add_CheckedChanged($UpdateSeparateNDControls)
+        & $UpdateSeparateNDControls
+
         $WinForm.Controls.Add($Table)
         $WinForm.AcceptButton = $OK
         $WinForm.CancelButton = $Cancel
@@ -3321,19 +3382,26 @@ switch -CaseSensitive ($Op) {
         Clear-Host
         if ($WinForm.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { Error "Sorry! You (${env:USERNAME}) cancelled the operation." }
         if ([string]::IsNullOrWhiteSpace($NameBox.Text)) { Error "Sorry! No empty names please!" }
-        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo) -ne "Yes") { Error "Nevermind then..." }
+        if ($SeparateNDCheck.Checked -and [string]::IsNullOrWhiteSpace($DisplayNameBox.Text)) { Error "Sorry! No empty display names please!" }
+        if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDisplay name: $CurrentDisplayName -> $($DisplayNameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nDisplay description: $CurrentDisplayDescription -> $($DisplayDescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo) -ne "Yes") { Error "Nevermind then..." }
         Set-Progress $Op "Changes are applying..." 80
-        Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text
+        if ($SeparateNDCheck.Checked) {
+            Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -DisplayName $DisplayNameBox.Text -Description $DescBox.Text -DisplayDescription $DisplayDescBox.Text -Flags $FlagsBox.Text -SeparateND
+        } else {
+            Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text
+        }
         Set-Progress $Op "We will confirm the changes." 95
         $Verify = Get-WimImageMetadata -WimPath $Path -Index $Index
         Clear-Host
         $ExpectedName = [string]$NameBox.Text
+        $ExpectedDisplayName = if ($SeparateNDCheck.Checked) { [string]$DisplayNameBox.Text } else { $ExpectedName }
         $ExpectedDescription = [string]$DescBox.Text
+        $ExpectedDisplayDescription = if ($SeparateNDCheck.Checked) { [string]$DisplayDescBox.Text } else { $ExpectedDescription }
         $ExpectedFlags = [string]$FlagsBox.Text
         if ($Verify.Name -cne $ExpectedName) { Error "WIM verification failed for NAME.`r`n`r`nExpected: [$ExpectedName]`r`nActual: [$($Verify.Name)]" }
-        if ($Verify.DisplayName -cne $ExpectedName) { Error "WIM verification failed for DISPLAYNAME.`r`n`r`nExpected: [$ExpectedName]`r`nActual: [$($Verify.DisplayName)]" }
+        if ($Verify.DisplayName -cne $ExpectedDisplayName) { Error "WIM verification failed for DISPLAYNAME.`r`n`r`nExpected: [$ExpectedDisplayName]`r`nActual: [$($Verify.DisplayName)]" }
         if ($Verify.Description -cne $ExpectedDescription) { Error "WIM verification failed for DESCRIPTION.`r`n`r`nExpected: [$ExpectedDescription]`r`nActual: [$($Verify.Description)]" }
-        if ($Verify.DisplayDescription -cne $ExpectedDescription) { Error "WIM verification failed for DISPLAYDESCRIPTION.`r`n`r`nExpected: [$ExpectedDescription]`r`nActual: [$($Verify.DisplayDescription)]" }
+        if ($Verify.DisplayDescription -cne $ExpectedDisplayDescription) { Error "WIM verification failed for DISPLAYDESCRIPTION.`r`n`r`nExpected: [$ExpectedDisplayDescription]`r`nActual: [$($Verify.DisplayDescription)]" }
         if ($Verify.Flags -cne $ExpectedFlags) { Error "WIM verification failed for FLAGS.`r`n`r`nExpected: [$ExpectedFlags]`r`nActual: [$($Verify.Flags)]" }
         Complete-Progress $Op
         Clear-Host
@@ -3956,26 +4024,26 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows"
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join]
 "MUIVerb"="Join SWM..."
 "SubCommands"=""
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell]
 @=""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\24JoinWIM]
 @="Into WIM"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM\command]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\24JoinWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinWIM -Path \"%1\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\25JoinESD]
 @="Into ESD"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD\command]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\25JoinESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinESD -Path \"%1\""
 
 ; ================================================
@@ -4140,25 +4208,25 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell]
 @=""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveWIM]
 @="Image Drive To WIM File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveWIM -Path \"%1\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveESD]
 @="Image Drive To ESD File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveESD -Path \"%1\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\23SaveSWM]
 @="Image Drive To SWM File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\23SaveSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveSWM -Path \"%1\""
 
 ; ==========================================
@@ -4459,26 +4527,26 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\11BApply\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op Apply -Path \"%1\" -InstallingWindows -WPFUI"
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join]
 "MUIVerb"="Join SWM..."
 "SubCommands"=""
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell]
 @=""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\24JoinWIM]
 @="Into WIM"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\23JoinWIM\command]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\24JoinWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinWIM -Path \"%1\" -WPFUI"
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\25JoinESD]
 @="Into ESD"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\23Join\shell\24JoinESD\command]
+[HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_SWM\shell\24Join\shell\25JoinESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op JoinESD -Path \"%1\" -WPFUI"
 
 ; ================================================
@@ -4643,25 +4711,25 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell]
 @=""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveWIM]
 @="Image Drive To WIM File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\20SaveWIM\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveWIM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveWIM -Path \"%1\" -WPFUI"
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveESD]
 @="Image Drive To ESD File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\21SaveESD\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveESD\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveESD -Path \"%1\" -WPFUI"
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\23SaveSWM]
 @="Image Drive To SWM File"
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
-[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\22SaveSWM\command]
+[HKEY_CLASSES_ROOT\Drive\shell\ALOSImageTools\shell\23SaveSWM\command]
 @="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op SaveSWM -Path \"%1\" -WPFUI"
 
 ; ==========================================
@@ -4675,6 +4743,7 @@ Windows Registry Editor Version 5.00
                 & reg.exe import $RegFile 2>&1 | Out-Null
                 if ($LASTEXITCODE -gt 0) { return $false }
                 Remove-Item -LiteralPath $RegFile -Force -ErrorAction SilentlyContinue
+                # Stop-Process automatically restarts explorer.exe if it is terminated with this cmdlet.
                 Stop-Process -Name explorer -Force | Out-Null
                 $ZipPath = Join-Path $Root 'ALOS-ImageTools_Files.zip'
                 # Copy if the installation directory is not the same as the root.
@@ -4732,7 +4801,7 @@ Windows Registry Editor Version 5.00
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "D5A862A0A01F6CCEF2E1BCCEC89271AE95544E7A15CD2141F3565ED38FAE432B") { return $false }
+                    if ($Hash -ne "A127FDEAE458B56214BD0985245A967ED7E2443D12421F0E8F012917CD8546D0") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -4743,7 +4812,7 @@ Windows Registry Editor Version 5.00
             $DialogResult = Show-UninstallChoices
             switch ($DialogResult) {
                 { $_ -eq [System.Windows.Forms.DialogResult]::Yes } { $UninstallFile = $UninstallA }
-                { $_ -eq [System.Windows.Forms.DialogResult]::No } { $UninstallFile = $UninstallB }
+                { $_ -eq [System.Windows.Forms.DialogResult]::No }  { $UninstallFile = $UninstallB }
                 default { return $false }
             }
             $UninstallRegistry = Join-Path $env:TEMP "ALOSImageTools_Uninstall.reg"
@@ -5115,5 +5184,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5119
+    Line count: 5188
 #>
