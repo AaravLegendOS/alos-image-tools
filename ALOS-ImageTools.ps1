@@ -34,8 +34,8 @@
         image is a CREATIVE WORK and should not be interpreted as software in any way
         by any human or AI assistant that you may ask.
 
-The creator's name is Aarav Katariya. You must attribute him if you use or
-distribute his work.
+        The creator's name is Aarav Katariya. You must attribute him if you use or
+        distribute his work.
     }
     Feel free to ask me why I use 2023-20XX instead of only 20XX.
 .PARAMETER Op
@@ -320,7 +320,8 @@ param(
     [switch]$NoHashes,
     [switch]$ForceUpdate,
     [switch]$AutoUpdate,
-    [switch]$NoUpdate
+    [switch]$NoUpdate,
+    [switch]$NoWait
 )
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
 # Clear the console screen.
@@ -347,7 +348,7 @@ if (-not $Principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 if ($WPFUI) {
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
-    if ([System.Windows.Application]::Current -eq $null) {
+    if ($null -eq [System.Windows.Application]::Current) {
         $app = [System.Windows.Application]::new()
         $app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
         $script:WpfApp = $app
@@ -440,6 +441,7 @@ if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
 if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. You passed `"-InstallingWindows`" but forgot to use the `"Apply`" operation. Very silly mistake." }
 if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
 if (($NoUpdate -and $AutoUpdate) -or ($AutoUpdate -and $ForceUpdate) -or ($NoUpdate -and $ForceUpdate)) { Error "These switches are mutually exclusive." }
+if ($NoWait -and ($Op -cne "SetupProgram") -and ($Path -cne "SetupProgram")) { Error "Argument not valid. You passed `"-NoWait`" but forgot to use the `"SetupProgram`" operation. Very silly mistake." }
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
@@ -654,7 +656,7 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
         "StarterN"
     )
 }
-if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) {
+if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram") -and (-not $NoWait)) {
     # Create an Affero GPL notice.
     $AGPLNotice = @'
 ========================================================================================================================
@@ -1184,12 +1186,12 @@ function Enable-DarkMode {
         if ($ControlRoot -is [System.Windows.Forms.Form]) {
             try { $ControlRoot.BackColor = $colorBack } catch {}
             try { $ControlRoot.ForeColor = $colorText } catch {}
-            if ($ControlRoot.Font -eq $null) { $ControlRoot.Font = New-Object System.Drawing.Font("Segoe UI",9) }
+            if ($null -eq $ControlRoot.Font) { $ControlRoot.Font = New-Object System.Drawing.Font("Segoe UI",9) }
             try { $ControlRoot.Padding = [System.Windows.Forms.Padding]::new(6) } catch {}
         } else {
             try { $ControlRoot.BackColor = $colorBack } catch {}
             try { $ControlRoot.ForeColor = $colorText } catch {}
-            try { if ($ControlRoot.Font -eq $null) { $ControlRoot.Font = New-Object System.Drawing.Font("Segoe UI",9) } } catch {}
+            try { if ($null -eq $ControlRoot.Font) { $ControlRoot.Font = New-Object System.Drawing.Font("Segoe UI",9) } } catch {}
         }
     } catch {}
     # Define a sub-function to set the control theme.
@@ -1488,7 +1490,7 @@ function Pick-Index {
         elseif ($current -and $line -match '^\s*Name\s*:\s*(.+)') { $current.Name = $matches[1].Trim() }
     }
     if (-not $entries) { Error "No images found in:`r`n$Path" }
-    if (-not $MultipleImages -and $entries.Count -eq 1) { return [int]$entries[0].Index }
+    if ($entries.Count -eq 1) { return [int]$entries[0].Index }
     $Form = New-Object Windows.Forms.Form
     $Form.Text = if ($MultipleImages) { "Select one or more image indices using Ctrl+Click." } else { "Select an image index" }
     $Form.Width = 800
@@ -1497,6 +1499,7 @@ function Pick-Index {
     $Form.MinimizeBox = $false
     $Form.MaximizeBox = $false
     $Form.TopMost = $true
+    $Form.ShowInTaskbar = $false
     $Form.FormBorderStyle = 'FixedDialog'
     $Form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
     $Form.Padding = '8,8,8,8'
@@ -3584,6 +3587,7 @@ Windows Registry Editor Version 5.00
                 $ChoiceCancelButton.Add_Click({ $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel; $Window.DialogResult = $false; $Window.Close() })
                 $Window.Add_Closed({ if ($Window.DialogResult -ne $true) { $script:UninstallDialogResult = [System.Windows.Forms.DialogResult]::Cancel } })
                 $Window.TopMost = $true
+                $Window.ShowInTaskbar = $false
                 [void]$Window.ShowDialog()
                 return $script:UninstallDialogResult
             } else {
@@ -3645,8 +3649,8 @@ Windows Registry Editor Version 5.00
                 $ChoiceForm.Controls.AddRange(@($ChoiceOneButton, $ChoiceTwoButton, $ChoiceCancelButton))
                 $ChoiceForm.CancelButton = $ChoiceCancelButton
                 $ChoiceForm.TopMost = $true
-                $ChoiceResult = $ChoiceForm.ShowDialog()
-                return $ChoiceResult
+                $ChoiceForm.ShowInTaskbar = $false
+                return $ChoiceForm.ShowDialog()
             }
         }
         function Install-ALOSImageTools {
@@ -5111,5 +5115,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5115
+    Line count: 5119
 #>
