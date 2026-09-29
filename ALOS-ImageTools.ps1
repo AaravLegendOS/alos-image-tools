@@ -4093,7 +4093,7 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG\command]
-@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractCLG -Path \"%1\""
 
 ; ================================================
 ; IMG file submenu.
@@ -4142,7 +4142,7 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG\command]
-@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\""
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractCLG -Path \"%1\""
 
 ; ================================================
 ; Directory background operations.
@@ -4610,7 +4610,7 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_ISO\shell\Extract\shell\20ExtractCLG\command]
-@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractCLG -Path \"%1\" -WPFUI"
 
 ; ================================================
 ; IMG file submenu.
@@ -4659,7 +4659,7 @@ Windows Registry Editor Version 5.00
 "Icon"="\"${ALOSImageToolsDir}\\ALOS-ImageTools.ico\""
 
 [HKEY_CLASSES_ROOT\*\shell\ALOSImageTools_IMG\shell\Extract\shell\20ExtractCLG\command]
-@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractSWM -Path \"%1\" -WPFUI"
+@="\"$PSExePath\" -NoProfile -NoLogo -STA -ExecutionPolicy Bypass -File \"$ALOSImageTools\" -Op ExtractCLG -Path \"%1\" -WPFUI"
 
 ; ================================================
 ; Directory background operations.
@@ -4829,7 +4829,7 @@ Windows Registry Editor Version 5.00
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "10F3B2ED483B953450399A47DE3A995AF340056436180D6760E8A9217D297CBD") { return $false }
+                    if ($Hash -ne "C4EB2E14E2AB5F3360707F64778F29B59FEF0AD18C2A0D8B0D54D947AE674BC8") { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
