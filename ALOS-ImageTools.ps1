@@ -454,13 +454,14 @@ $CompressWarn = "This will use all your system resources. It can take up to seve
 # Define version.
 $CurrentVersion = [Version]"1.0.0.0"
 $User_SevenZ = "$(Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip | Select-Object -ExpandProperty InstallLocation)7z.exe"
-Write-Host "Checking for updates..." -ForegroundColor Yellow
+if (-not $NoUpdate) { Write-Host "Checking for updates..." -ForegroundColor Yellow }
 # Create this function before we check for updates.
 function CheckFor-LatestALOSImageTools {
     param(
         [string]$User = "AaravLegendOS",
         [string]$Repo = "alos-image-tools"
     )
+    if ($NoUpdate) { return "OFFLINE" }
     $Client = New-Object System.Net.Sockets.TcpClient
     try { $Client.Connect("$((Resolve-DnsName -Name github.com).IPAddress)", 443); $Pinged = $true } catch { $Pinged = $false } finally { $Client.Dispose() }
     if ($Pinged) {
@@ -2393,7 +2394,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -Message "Should the exported WIM be marked bootable?" -Buttons YesNoCancel
+        $result = Question -Message "Should the exported WIM be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE." -Buttons YesNoCancel
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported WIM as bootable."
@@ -2461,7 +2462,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -Message "Should the exported ESD be marked bootable?" -Buttons YesNoCancel
+        $result = Question -Message "Should the exported ESD be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE." -Buttons YesNoCancel
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported ESD as bootable."
@@ -5210,5 +5211,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5214
+    Line count: 5215
 #>
