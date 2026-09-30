@@ -58,7 +58,7 @@
         ExtractWIM - Extract embedded WIM files from a container.
         ExtractESD - Extract embedded ESD files from a container.
         ExtractSWM - Extract embedded SWM files from a container.
-        ExtractCLG - Extract embedded CLG files from a container. (Primarily from Vista and 7 ISO's.)
+        ExtractCLG - Extract embedded CLG files from a container. (Only Vista and 7 ISO's.)
         CreateISOWIM - Create bootable ISO from ESD file using install.wim as the install source.
         CreateISOESD - Create bootable ISO from ESD file using install.esd as the install source.
         GetInfo - Display detailed image information and file hashes.
@@ -142,7 +142,7 @@
     Extracts embedded SWM files from a container.
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op ExtractCLG -Path "C:\Win7_Ultimate.iso"
-    Extracts embedded CLG files from a container. (Primarily from Vista and 7 ISO's.)
+    Extracts embedded CLG files from a container. (Only Vista and 7 ISO's.)
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op CreateISOWIM -Path "C:\install.esd"
     Creates a bootable ISO with install.wim as installation source.
@@ -1455,12 +1455,14 @@ function Pick-SaveFile($filter, $DefaultName) {
     if ($WPFUI) {
         $dlg = New-Object Microsoft.Win32.SaveFileDialog
         $dlg.Filter = $filter
+        $dlg.OverwritePrompt = $false
         if ($DefaultName) { $dlg.FileName = $DefaultName }
         if ($dlg.ShowDialog()) { Clear-Host; return $dlg.FileName }
         if ($Op -eq 'SaveWIM') { Info "Then you can append to a wimfile instead." } else { Error "Operation cancelled." }
     } else {
         $dlg = New-Object System.Windows.Forms.SaveFileDialog
         $dlg.Filter = $filter
+        $dlg.OverwritePrompt = $false
         if ($DefaultName) { $dlg.FileName = $DefaultName }
         if ($dlg.ShowDialog() -eq 'OK') { Clear-Host; return $dlg.FileName }
         if ($Op -eq 'SaveWIM') { Info "Then you can append to a wimfile instead." } else { Error "Operation cancelled." }
@@ -1879,7 +1881,7 @@ function Save-OutputFile {
     $dlg = New-Object System.Windows.Forms.SaveFileDialog
     $dlg.Filter = $Filter
     $dlg.FileName = $DefaultFileName
-    $dlg.OverwritePrompt = $true
+    $dlg.OverwritePrompt = $false
     if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [System.IO.File]::WriteAllText($dlg.FileName, $Content, [System.Text.UTF8Encoding]::new($true)) }
 }
 # [NEW] Function to extract an iso for it's wim, esd or swm files.
@@ -2135,7 +2137,7 @@ function Get-WimImageMetadata {
         [Parameter(Mandatory)]
         [string]$WimPath,
         [Parameter(Mandatory)]
-        [ulong]$Index
+        [uint64]$Index
     )
     [uint32]$CreationResult = 0
     $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
@@ -2178,7 +2180,7 @@ function Set-WimImageMetadata {
         [Parameter(Mandatory)]
         [string]$WimPath,
         [Parameter(Mandatory)]
-        [ulong]$Index,
+        [uint64]$Index,
         [string]$Name,
         [string]$Description,
         [string]$Flags,
@@ -2378,6 +2380,7 @@ switch -CaseSensitive ($Op) {
     # Good for separation of indexes.
     'ExportWIM' {
         Info "You can export ONE or MORE indices from a source file to a single WIM file."
+        Warn "If you have to merge two wimfiles into one, for each image, you would select it and then export it into the same wimfile. The overwrite prompt is disabled."
         Set-Progress "ExportWIM" "Selecting index(es)" 5
         $selected = Pick-Index -Path $Path -MultipleImages
         if ($null -eq $selected) { Error "No indices selected." }
@@ -3256,7 +3259,7 @@ switch -CaseSensitive ($Op) {
         Set-Progress $Op "Getting WIM info!" 20
         $WimInfo = Acquire-WimInformation -WimPath $Path
         if ([uint32]$WimInfo.ImageCount -lt 1) { Error "Sorry! THERE ARE NO IMAGES. YOU CANNOT CHANGE IT." }
-        Set-Progress $Op "OK. Pick an image." 40
+        Set-Progress $Op "Selecting a WIM image..." 40
         $Index = [uint32](Pick-Index -Path $Path)
         Set-Progress $Op "Acquire the metadata of ${Index}..." 55
         $Metadata = Get-WimImageMetadata -WimPath $Path -Index $Index
@@ -3372,7 +3375,6 @@ switch -CaseSensitive ($Op) {
         }
         $SeparateNDCheck.Add_CheckedChanged($UpdateSeparateNDControls)
         & $UpdateSeparateNDControls
-
         $WinForm.Controls.Add($Table)
         $WinForm.AcceptButton = $OK
         $WinForm.CancelButton = $Cancel
@@ -3385,19 +3387,15 @@ switch -CaseSensitive ($Op) {
         if ($SeparateNDCheck.Checked -and [string]::IsNullOrWhiteSpace($DisplayNameBox.Text)) { Error "Sorry! No empty display names please!" }
         if ((Question "Confirm that you want to change the metadata of ${Index}.`r`n`r`nName: $CurrentName -> $($NameBox.Text)`r`nDisplay name: $CurrentDisplayName -> $($DisplayNameBox.Text)`r`nDescription: $CurrentDescription -> $($DescBox.Text)`r`nDisplay description: $CurrentDisplayDescription -> $($DisplayDescBox.Text)`r`nFlags: $CurrentFlags -> $($FlagsBox.Text)`r`n`r`nThis modifies the WIM in-place." -Buttons YesNo) -ne "Yes") { Error "Nevermind then..." }
         Set-Progress $Op "Changes are applying..." 80
-        if ($SeparateNDCheck.Checked) {
-            Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -DisplayName $DisplayNameBox.Text -Description $DescBox.Text -DisplayDescription $DisplayDescBox.Text -Flags $FlagsBox.Text -SeparateND
-        } else {
-            Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text
-        }
+        if ($SeparateNDCheck.Checked) { Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -DisplayName $DisplayNameBox.Text -Description $DescBox.Text -DisplayDescription $DisplayDescBox.Text -Flags $FlagsBox.Text -SeparateND } else { Set-WimImageMetadata -WimPath $Path -Index $Index -Name $NameBox.Text -Description $DescBox.Text -Flags $FlagsBox.Text }
         Set-Progress $Op "We will confirm the changes." 95
         $Verify = Get-WimImageMetadata -WimPath $Path -Index $Index
-        Clear-Host
         $ExpectedName = [string]$NameBox.Text
         $ExpectedDisplayName = if ($SeparateNDCheck.Checked) { [string]$DisplayNameBox.Text } else { $ExpectedName }
         $ExpectedDescription = [string]$DescBox.Text
         $ExpectedDisplayDescription = if ($SeparateNDCheck.Checked) { [string]$DisplayDescBox.Text } else { $ExpectedDescription }
         $ExpectedFlags = [string]$FlagsBox.Text
+        Clear-Host
         if ($Verify.Name -cne $ExpectedName) { Error "WIM verification failed for NAME.`r`n`r`nExpected: [$ExpectedName]`r`nActual: [$($Verify.Name)]" }
         if ($Verify.DisplayName -cne $ExpectedDisplayName) { Error "WIM verification failed for DISPLAYNAME.`r`n`r`nExpected: [$ExpectedDisplayName]`r`nActual: [$($Verify.DisplayName)]" }
         if ($Verify.Description -cne $ExpectedDescription) { Error "WIM verification failed for DESCRIPTION.`r`n`r`nExpected: [$ExpectedDescription]`r`nActual: [$($Verify.Description)]" }
@@ -5212,5 +5210,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5216
+    Line count: 5214
 #>
