@@ -440,6 +440,8 @@ function Complete-Progress {
     )
     Write-Progress -Id $ProgID -Activity $Activity -Status "Completed" -PercentComplete 100 -Completed
 }
+# Define a SHA256 hash.
+$RealFilesHash = "D378D104B0ADB0FCEE34B4B9CE43F51B8BA16D4BD5559CA5D8A5E169DBB76005"
 # Obtain and validate architecture.
 $AArch = [int](Get-CimInstance Win32_Processor).Architecture # AArch is temp variable in this case.
 $Arch = if ($AArch -eq 9) { "AMD64" } elseif ($AArch -eq 12) { "ARM64" } else { "UNSUPPORTED" } # Arch is our permanent variable.
@@ -4817,7 +4819,7 @@ Windows Registry Editor Version 5.00
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -ne "C4EB2E14E2AB5F3360707F64778F29B59FEF0AD18C2A0D8B0D54D947AE674BC8") { return $false }
+                    if ($Hash -cne $RealFilesHash) { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -5200,5 +5202,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5204
+    Line count: 5206
 #>
