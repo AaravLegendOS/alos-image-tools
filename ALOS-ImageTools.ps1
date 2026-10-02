@@ -3010,6 +3010,7 @@ switch -CaseSensitive ($Op) {
         if ($Arch -ne "AMD64") { Error "Sorry! This function is not supported on $Arch devices.`r`n`r`nYou need to be on an AMD64 device to use ${Op}.`r`n`r`nPlease submit an issue on ${GithubRepo} and Aarav Katariya will reach out to you. Thank you!" }
         $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
         if ($ext -ne '.esd') { Error "CreateISOWIM only supports ESD input files. Provided: $ext" }
+        Warn "This operation can only do one $Op task at a time. The same applies to CreateISOESD."
         $dirWim = Join-Path $WorkingDir "isocreator\wim\ISOFOLDER"
         if (Test-Path -LiteralPath $dirWim) { Remove-Item -Path $dirWim -Recurse -Force }
         $exeWim = Join-Path $WorkingDir "isocreator\wim\createisowim.exe"
@@ -3034,6 +3035,7 @@ switch -CaseSensitive ($Op) {
         if ($Arch -ne "AMD64") { Error "Sorry! This function is not supported on $Arch devices.`r`n`r`nYou need to be on an AMD64 device to use ${Op}.`r`n`r`nPlease submit an issue on ${GithubRepo} and Aarav Katariya will reach out to you. Thank you!" }
         $ext = [IO.Path]::GetExtension($Path).ToLowerInvariant()
         if ($ext -ne '.esd') { Error "CreateISOESD only supports ESD input files. Provided: $ext" }
+        Warn "This operation can only do one $Op task at a time. The same applies to CreateISOWIM."
         $dirEsd = Join-Path $WorkingDir "isocreator\esd\ISOFOLDER"
         if (Test-Path -LiteralPath $dirEsd) { Remove-Item -Path $dirEsd -Recurse -Force }
         $exeEsd = Join-Path $WorkingDir "isocreator\esd\createisoesd.exe"
@@ -5198,5 +5200,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5202
+    Line count: 5204
 #>
