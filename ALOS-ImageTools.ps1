@@ -325,7 +325,8 @@ param(
     [switch]$ForceUpdate,
     [switch]$AutoUpdate,
     [switch]$NoUpdate,
-    [switch]$NoWait
+    [switch]$NoWait,
+    [switch]$CompressZip
 )
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
 # Clear the console screen.
@@ -360,7 +361,10 @@ if ($WPFUI) {
 }
 # Enable visual styles for Windows Forms.
 [System.Windows.Forms.Application]::EnableVisualStyles()
-# Function to present a question to the user.
+# Function to present a question to the user. For safety, return a
+# simple value like "Yes" or "No" to avoid PowerShell string coercion
+# which strict mode hates. This avoids the use of enums to compare an
+# answer from this function.
 function Question {
     param(
         [Parameter(Mandatory)]
@@ -445,23 +449,35 @@ if ($Arch -eq "UNSUPPORTED") { Error "Unsupported architecture: ${Arch}." }
 if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. You passed `"-InstallingWindows`" but forgot to use the `"Apply`" operation. Very silly mistake." }
 if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
 if (($NoUpdate -and $AutoUpdate) -or ($AutoUpdate -and $ForceUpdate) -or ($NoUpdate -and $ForceUpdate)) { Error "These switches are mutually exclusive." }
-if ($NoWait -and ($Op -cne "SetupProgram") -and ($Path -cne "SetupProgram")) { Error "Argument not valid. You passed `"-NoWait`" but forgot to use the `"SetupProgram`" operation. Very silly mistake." }
+if (($NoWait) -or ($CompressZip) -and ($Op -cne "SetupProgram") -and ($Path -cne "SetupProgram")) { Error "Argument not valid. You passed `"-NoWait`" or `"-CompressZip`" but forgot to use the `"SetupProgram`" operation and path. Very silly mistake." }
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
+if ($CompressZip) {
+    [array]$List = Get-ChildItem -Name | Where-Object { $_ -cin @('ALOS-ImageTools.ico','ALOS-ImageTools.ps1','COPYING.TXT','LICENCE.TXT','README.DOCX','RUN SETUP_WF.EXE OR SETUP_WPF.EXE TO INSTALL OR UNINSTALL ALOS IMAGE TOOLS','SETUP_WF.EXE','SETUP_WPF.EXE') }
+    Compress-Archive -Path $List -DestinationPath "${WorkingDir}\ALOS-ImageTools.zip" -Force
+    if (Test-Path "${WorkingDir}\ALOS-ImageTools.zip") {
+        $CompressHash = (Get-FileHash -Path "${WorkingDir}\ALOS-ImageTools.zip" -Algorithm SHA256).Hash.ToUpper()
+        Info "The hash of ALOS-ImageTools.zip is ${CompressHash}.`r`n`r`nPress `"OK`" and the hash will be copied to your clipboard automatically."
+        Set-Clipboard -Value $CompressHash
+        Exit 0
+    } else {
+        Info 'Failed to compress the archive.'
+        Exit 3
+    }
+}
 # Set a helpful message if you choose a resource-intensive operation.
 $CompressWarn = "This will use all your system resources. It can take up to several hours depending on your system. Your cpu will remain at 100% usage."
 # Define version.
 $CurrentVersion = [Version]"1.0.0.0"
 $User_SevenZ = "$(Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip | Select-Object -ExpandProperty InstallLocation)7z.exe"
-if (-not $NoUpdate) { Write-Host "Checking for updates..." -ForegroundColor Yellow }
+Write-Host "Checking for updates..." -ForegroundColor Yellow
 # Create this function before we check for updates.
 function CheckFor-LatestALOSImageTools {
     param(
         [string]$User = "AaravLegendOS",
         [string]$Repo = "alos-image-tools"
     )
-    if ($NoUpdate) { return "OFFLINE" }
     $Client = New-Object System.Net.Sockets.TcpClient
     try { $Client.Connect("$((Resolve-DnsName -Name github.com).IPAddress)", 443); $Pinged = $true } catch { $Pinged = $false } finally { $Client.Dispose() }
     if ($Pinged) {
@@ -2043,7 +2059,7 @@ function Process-Container {
     }
     if ($LASTEXITCODE -ne 0) { throw "The operation failed with exit code $LASTEXITCODE.`r`n`r`n$output" }
     Complete-Progress $Activity 2
-    return ($output | Out-File -FilePath $env:USERPROFILE\Desktop\wimlib-imagex_output.log -Encoding 'UTF8' -Append)
+    return ("Output of wimlib-imagex as of $(Get-Date -Format "yyyy MM dd hh mm ss"): $output" | Out-File -FilePath $env:USERPROFILE\Desktop\wimlib-imagex_output.log -Encoding 'UTF8' -Append)
 }
 # Function to find all split wim parts.
 function Get-SplitWimParts {
@@ -2080,7 +2096,7 @@ function Acquire-WimInformation {
     )
     [uint32]$CreationResult = 0
     $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile($WimPath, [ALOSImageTools.NativeWimg]::WIM_GENERIC_READ, [ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING, [ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE, [ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE, [ref]$CreationResult)
-    if ($WIMGAPI -eq [IntPtr]::Zero -or $WIMGAPI -eq [IntPtr](-1)) {
+    if (($WIMGAPI -eq [IntPtr]::Zero) -or ($WIMGAPI -eq [IntPtr](-1))) {
         $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
         Error "Sorry! We were unable to open the wimfile for reading!`r`n`r`nThe error is: ${Err}."
     }
@@ -2104,15 +2120,8 @@ function Set-WimBootIndex {
         [uint32]$Index
     )
     [uint32]$CreationResult = 0
-    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
-        $WimPath,
-        [ALOSImageTools.NativeWimg]::WIM_GENERIC_READ -bor [ALOSImageTools.NativeWimg]::WIM_GENERIC_WRITE,
-        [ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,
-        [ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,
-        [ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,
-        [ref]$CreationResult
-    )
-    if ($WIMGAPI -eq [IntPtr]::Zero -or $WIMGAPI -eq [IntPtr](-1)) {
+    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile($WimPath,[ALOSImageTools.NativeWimg]::WIM_GENERIC_READ -bor [ALOSImageTools.NativeWimg]::WIM_GENERIC_WRITE,[ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,[ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,[ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,[ref]$CreationResult)
+    if (($WIMGAPI -eq [IntPtr]::Zero) -or ($WIMGAPI -eq [IntPtr](-1))) {
         $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
         Error "Sorry! We were unable to open the wimfile for reading!`r`n`r`nThe error is: ${Err}."
     }
@@ -2141,14 +2150,7 @@ function Get-WimImageMetadata {
         [uint64]$Index
     )
     [uint32]$CreationResult = 0
-    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
-        $WimPath,
-        [ALOSImageTools.NativeWimg]::WIM_GENERIC_READ,
-        [ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,
-        [ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,
-        [ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,
-        [ref]$CreationResult
-    )
+    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile($WimPath,[ALOSImageTools.NativeWimg]::WIM_GENERIC_READ,[ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,[ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,[ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,[ref]$CreationResult)
     if (($WIMGAPI -eq [IntPtr]::Zero) -or ($WIMGAPI -eq [IntPtr](-1))) {
         $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
         Error "Sorry! The WIM cannot be verified.`r`n`r`nThe error is: ${Err}."
@@ -2190,30 +2192,14 @@ function Set-WimImageMetadata {
         [switch]$SeparateND
     )
     [uint32]$CreationResult = 0
-    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile(
-        $WimPath,
-        [ALOSImageTools.NativeWimg]::WIM_GENERIC_WRITE,
-        [ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,
-        [ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,
-        [ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,
-        [ref]$CreationResult
-    )
+    $WIMGAPI = [ALOSImageTools.NativeWimg]::WIMCreateFile($WimPath,[ALOSImageTools.NativeWimg]::WIM_GENERIC_WRITE,[ALOSImageTools.NativeWimg]::WIM_OPEN_EXISTING,[ALOSImageTools.NativeWimg]::WIM_FLAG_SHARE_WRITE,[ALOSImageTools.NativeWimg]::WIM_COMPRESS_NONE,[ref]$CreationResult)
     if (($WIMGAPI -eq [IntPtr]::Zero) -or ($WIMGAPI -eq [IntPtr](-1))) {
         $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
         Error "Sorry! We were unable to open the WIM file for metadata editing.`r`n`r`nThe error is: ${Err}.`r`n`r`nWIM creation result: ${CreationResult}."
     }
     try {
         $ErrorMessage = $null
-        $ok = [ALOSImageTools.NativeWimg]::SetImageMetadata(
-            $WIMGAPI,
-            $Index,
-            $Name,
-            $DisplayName,
-            $Description,
-            $DisplayDescription,
-            $Flags,
-            [bool]$SeparateND,
-            [ref]$ErrorMessage
+        $ok = [ALOSImageTools.NativeWimg]::SetImageMetadata($WIMGAPI,$Index,$Name,$DisplayName,$Description,$DisplayDescription,$Flags,[bool]$SeparateND,[ref]$ErrorMessage
         )
         if (-not $ok) {
             $Err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
@@ -2229,6 +2215,7 @@ function Show-Finished {
     $Host.UI.RawUI.WindowTitle = "$Op Completed On $Path" # Set the Window Title to say done.
     $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2026 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
     Info $MessageExit # Say to the user that the task is complete.
+    try { $null = Get-Process -Name explorer -ErrorAction Stop } catch { Start-Process -FilePath explorer.exe -Verb RunAs } # Start explorer if it is not running. This is a failsafe for when the user has killed explorer.exe and it does not automatically start.
     if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { Stop-Process -Id $Pid -Force } # If setup is launched, forcibly kill the PowerShell process because we assume user launched from the PowerShell command-line.
     Exit 0 # Normal operations exit the program with a status code of 0.
 }
@@ -2381,7 +2368,7 @@ switch -CaseSensitive ($Op) {
     # Good for separation of indexes.
     'ExportWIM' {
         Info "You can export ONE or MORE indices from a source file to a single WIM file."
-        Warn "If you have to merge two wimfiles into one, for each image, you would select it and then export it into the same wimfile. The overwrite prompt is disabled."
+        Warn "If you have to merge two wimfiles into one, for each image, you would select wimfile one''s image and export it and then export the second wimfile''s image into the same wimfile. The overwrite prompt is disabled."
         Set-Progress "ExportWIM" "Selecting index(es)" 5
         $selected = Pick-Index -Path $Path -MultipleImages
         if ($null -eq $selected) { Error "No indices selected." }
@@ -2394,7 +2381,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -Message "Should the exported WIM be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE." -Buttons YesNoCancel
+        $result = Question -Message "Should the exported WIM be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE.`r`n`r`nIf there is a full operating system in the selected image, select NO." -Buttons YesNoCancel
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported WIM as bootable."
@@ -2462,7 +2449,7 @@ switch -CaseSensitive ($Op) {
         if ([string]::IsNullOrWhiteSpace($folder)) { $folder = (Get-Location).ProviderPath }
         if (-not (Test-Path -LiteralPath $folder)) { New-Item -ItemType Directory -Path $folder -Force | Out-Null }
         $bootable = $false
-        $result = Question -Message "Should the exported ESD be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE." -Buttons YesNoCancel
+        $result = Question -Message "Should the exported ESD be marked bootable?`r`n`r`nNote: Only select YES if the image is a live Windows environment like Windows PE.`r`n`r`nIf there is a full operating system in the selected image, select NO." -Buttons YesNoCancel
         if ($result -eq "Yes") {
             $bootable = $true
             Write-Host "Marked exported ESD as bootable."
@@ -5211,5 +5198,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5215
+    Line count: 5202
 #>
