@@ -86,6 +86,38 @@
 .PARAMETER NoHashes
     This is a switch meaning it is optional.
     Decide if you want the file hashes or not.
+.PARAMETER NoWait
+    This is a switch meaning it is optional.
+    Decide if you do not want to wait 10 seconds reading legal stuff in SetupProgram operation.
+.PARAMETER AutoUpdate
+    This is a switch meaning it is optional.
+    Decide if you want to auto update to newest version if found else, this switch has no effect.
+.PARAMETER ForceUpdate
+    This is a switch meaning it is optional.
+    Forcibly updates to current or newest version, replacing
+    your local copy with a known good online version. (Be careful!)
+.PARAMETER NoUpdate
+    This is a switch meaning it is optional.
+    Decide if you want to inhibit updating or not.
+.PARAMETER CompressZip
+    This is a switch meaning it is optional.
+    When passed, ALOS Image Tools does NOT run but rather, compress the contents
+    to a zipfile named ALOS-ImageTools.zip and will output its SHA256 hash. This
+    hash will be copied to your clipboard. The following files will be included:
+        ALOS-ImageTools.ico
+        ALOS-ImageTools.ps1
+        COPYING.TXT
+        LICENCE.TXT
+        README.DOCX
+        RUN SETUP_WF.EXE OR SETUP_WPF.EXE TO INSTALL OR UNINSTALL ALOS IMAGE TOOLS
+        SETUP_WF.EXE
+        SETUP_WPF.EXE
+.PARAMETER CompressBinariesZip
+    This is a switch meaning it is optional.
+    When passed, ALOS Image Tools does NOT run but rather, compress the contents
+    to a zipfile named ALOS-ImageTools_FIles.zip and will output its SHA256 hash.
+    This hash will be copied to your clipboard. Folders, subfolders and files from
+    the bin, isocreator and regfiles directory will be compressed into the zipfile.
 .EXAMPLE
     .\ALOS-ImageTools.ps1 -Op Capture -Path "C:\MyFolder"
     Captures a directory into a new WIM image.
@@ -192,8 +224,6 @@
         Eric Biggers - Wimlib ImageX
         abbodi1406 - ESD Decryptor (Used as ISO creator)
     Additional Notes:
-        Official ESD downloads (limited) - https://worproject.com/esd
-        Official ESD downloads (complete) - https://files.rg-adguard.net/version/83fb91c9-107c-bdda-1ffc-2952d753a472?dark=1
         The program requires Windows PowerShell 5.1 not PowerShell Core 6 or 7 and must run with administrator privileges for all operations. If you do not, I will relaunch as admin.
 ==========================================================================================
                      Every Windows PowerShell 5.1 type and accelerator.
@@ -299,16 +329,23 @@ xml                          System.Xml.XmlDocument
 =========================================================================================
                           End Of Type And Accelerator Documentation
 =========================================================================================
+.LINK
+=========================================================================================
+AaravLegend-OS Site - https://bit.ly/m/AaravLegendOS
+AaravLegend-OS Github - https://github.com/AaravLegend-OS
+=========================================================================================
+Official ESD downloads (limited) - https://worproject.com/esd
+Official ESD downloads (complete) - https://files.rg-adguard.net/version/83fb91c9-107c-bdda-1ffc-2952d753a472?dark=1
+Note: Offical ESD download websites are primarily for CreateISOWIM and CreateISOESD but
+can also be used for every other operation too.
+.INPUTS
+    This PowerShell program takes a WIM, ESD, SWM, ISO or IMG file as well as folders as input.
+.OUTPUTS
+    Nothing. This PowerShell program outputs a target file, a text file (GetInfo only), a json file (GetInfo only), or nothing (SetupProgram only).
 #>
 #Requires -PSEdition Desktop
 #Requires -Version 5.1
 #Requires -Modules DISM
-#Requires -Assembly System.Windows.Forms
-#Requires -Assembly System.Drawing
-#Requires -Assembly PresentationFramework
-#Requires -Assembly PresentationCore
-#Requires -Assembly WindowsBase
-#Requires -Assembly System.Xml
 # Treat like a proper PowerShell cmdlet. Gives this program common parameters like -Verbose, -Debug, etc.
 [CmdletBinding()]
 param(
@@ -326,7 +363,56 @@ param(
     [switch]$AutoUpdate,
     [switch]$NoUpdate,
     [switch]$NoWait,
-    [switch]$CompressZip
+    [switch]$CompressZip,
+    [switch]$CompressBinariesZip
+)
+[array]$Binaries = @(
+    "bin\AMD64\7z.dll"
+    "bin\AMD64\7z.exe"
+    "bin\AMD64\libwim-15.dll"
+    "bin\AMD64\wimlib-imagex.exe"
+    "bin\ARM64\7z.dll"
+    "bin\ARM64\7z.exe"
+    "bin\ARM64\libwim-15.dll"
+    "bin\ARM64\wimlib-imagex.exe"
+    "isocreator\esd\CreateISOESD.exe"
+    "isocreator\esd\decrypt.cmd"
+    "isocreator\esd\bin\7z.dll"
+    "isocreator\esd\bin\7z.exe"
+    "isocreator\esd\bin\bcdedit.exe"
+    "isocreator\esd\bin\bfi.exe"
+    "isocreator\esd\bin\cdimage.exe"
+    "isocreator\esd\bin\esddecrypt.exe"
+    "isocreator\esd\bin\imagex.exe"
+    "isocreator\esd\bin\libwim-15.dll"
+    "isocreator\esd\bin\offlinereg.exe"
+    "isocreator\esd\bin\offreg.dll"
+    "isocreator\esd\bin\rawcopy.exe"
+    "isocreator\esd\bin\wim-update.txt"
+    "isocreator\esd\bin\wimlib-imagex.exe"
+    "isocreator\esd\bin\bin64\libwim-15.dll"
+    "isocreator\esd\bin\bin64\wimlib-imagex.exe"
+    "isocreator\wim\CreateISOWIM.exe"
+    "isocreator\wim\decrypt.cmd"
+    "isocreator\wim\bin\7z.dll"
+    "isocreator\wim\bin\7z.exe"
+    "isocreator\wim\bin\bcdedit.exe"
+    "isocreator\wim\bin\bfi.exe"
+    "isocreator\wim\bin\cdimage.exe"
+    "isocreator\wim\bin\esddecrypt.exe"
+    "isocreator\wim\bin\imagex.exe"
+    "isocreator\wim\bin\libwim-15.dll"
+    "isocreator\wim\bin\offlinereg.exe"
+    "isocreator\wim\bin\offreg.dll"
+    "isocreator\wim\bin\rawcopy.exe"
+    "isocreator\wim\bin\wim-update.txt"
+    "isocreator\wim\bin\wimlib-imagex.exe"
+    "isocreator\wim\bin\bin64\libwim-15.dll"
+    "isocreator\wim\bin\bin64\wimlib-imagex.exe"
+    "regfiles\ALOS-ImageTools (Remove) (Retain Classic Menu).reg"
+    "regfiles\ALOS-ImageTools (Remove) (Revert To Modern Menu).reg"
+    "regfiles\ALOS-ImageTools_WF.reg"
+    "regfiles\ALOS-ImageTools_WPF.reg"
 )
 if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { $Host.UI.RawUI.WindowTitle = "Setup Of ALOS Image Tools In Progress ($PID)" }
 # Clear the console screen.
@@ -456,17 +542,37 @@ if (($NoWait) -or ($CompressZip) -and ($Op -cne "SetupProgram") -and ($Path -cne
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
 if ($CompressZip) {
-    [array]$List = Get-ChildItem -Name | Where-Object { $_ -cin @('ALOS-ImageTools.ico','ALOS-ImageTools.ps1','COPYING.TXT','LICENCE.TXT','README.DOCX','RUN SETUP_WF.EXE OR SETUP_WPF.EXE TO INSTALL OR UNINSTALL ALOS IMAGE TOOLS','SETUP_WF.EXE','SETUP_WPF.EXE') }
-    Compress-Archive -Path $List -DestinationPath "${WorkingDir}\ALOS-ImageTools.zip" -Force
+    $Host.UI.RawUI.WindowTitle = "Compressing Zip In Progress!"
+    Compress-Archive -Path @('ALOS-ImageTools.ico','ALOS-ImageTools.ps1','COPYING.TXT','LICENCE.TXT','README.DOCX','RUN SETUP_WF.EXE OR SETUP_WPF.EXE TO INSTALL OR UNINSTALL ALOS IMAGE TOOLS','SETUP_WF.EXE','SETUP_WPF.EXE') -DestinationPath "${WorkingDir}\ALOS-ImageTools.zip" -Force
     if (Test-Path "${WorkingDir}\ALOS-ImageTools.zip") {
         $CompressHash = (Get-FileHash -Path "${WorkingDir}\ALOS-ImageTools.zip" -Algorithm SHA256).Hash.ToUpper()
         Info "The hash of ALOS-ImageTools.zip is ${CompressHash}.`r`n`r`nPress `"OK`" and the hash will be copied to your clipboard automatically."
         Set-Clipboard -Value $CompressHash
         Exit 0
-    } else {
-        Info 'Failed to compress the archive.'
-        Exit 3
-    }
+    } else { Error 'Failed to compress the archive.' }
+}
+if ($CompressBinariesZip) {
+    $Host.UI.RawUI.WindowTitle = "Compressing Binaries Zip In Progress!"
+    $Success = $false
+    $TempDir = Join-Path $env:TEMP "ALOS-ImageTools_Files_$([guid]::NewGuid())"
+    try {
+        New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+        foreach ($File in $Binaries) {
+            $Source = Join-Path $WorkingDir $File
+            $Destination = Join-Path $TempDir $File
+            $DestinationDir = Split-Path $Destination -Parent
+            New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+        }
+        Compress-Archive -Path (Join-Path $TempDir '*') -DestinationPath "${WorkingDir}\ALOS-ImageTools_Files.zip" -Force
+        if (Test-Path "${WorkingDir}\ALOS-ImageTools_Files.zip") {
+            $Success = $true
+            $CompressHash = (Get-FileHash "${WorkingDir}\ALOS-ImageTools_Files.zip" -Algorithm SHA256).Hash.ToUpper()
+            Info "The hash of ALOS-ImageTools_Files.zip is ${CompressHash}.`r`n`r`nPress `"OK`" and the hash will be copied to your clipboard automatically."
+            Set-Clipboard -Value $CompressHash
+        } else { Error 'Failed to compress the archive.' }
+    } finally { Remove-Item -LiteralPath $TempDir -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($Success) { exit 0 }
 }
 # Set a helpful message if you choose a resource-intensive operation.
 $CompressWarn = "This will use all your system resources. It can take up to several hours depending on your system. Your cpu will remain at 100% usage."
@@ -4766,54 +4872,7 @@ Windows Registry Editor Version 5.00
                 $ZipPath = Join-Path $Root 'ALOS-ImageTools_Files.zip'
                 # Copy if the installation directory is not the same as the root.
                 if ($Root -ine $WorkingDir) { Copy-Item -Path "${WorkingDir}\ALOS_Image_Tools.ico" -Destination $Root }
-                $Files = @(
-                    "bin\AMD64\7z.dll"
-                    "bin\AMD64\7z.exe"
-                    "bin\AMD64\libwim-15.dll"
-                    "bin\AMD64\wimlib-imagex.exe"
-                    "bin\ARM64\7z.dll"
-                    "bin\ARM64\7z.exe"
-                    "bin\ARM64\libwim-15.dll"
-                    "bin\ARM64\wimlib-imagex.exe"
-                    "isocreator\esd\decrypt.cmd"
-                    "isocreator\esd\CreateISOESD.exe"
-                    "isocreator\esd\bin\7z.dll"
-                    "isocreator\esd\bin\7z.exe"
-                    "isocreator\esd\bin\bcdedit.exe"
-                    "isocreator\esd\bin\bfi.exe"
-                    "isocreator\esd\bin\cdimage.exe"
-                    "isocreator\esd\bin\esddecrypt.exe"
-                    "isocreator\esd\bin\imagex.exe"
-                    "isocreator\esd\bin\libwim-15.dll"
-                    "isocreator\esd\bin\offlinereg.exe"
-                    "isocreator\esd\bin\offreg.dll"
-                    "isocreator\esd\bin\rawcopy.exe"
-                    "isocreator\esd\bin\wim-update.txt"
-                    "isocreator\esd\bin\wimlib-imagex.exe"
-                    "isocreator\esd\bin\bin64\libwim-15.dll"
-                    "isocreator\esd\bin\bin64\wimlib-imagex.exe"
-                    "isocreator\wim\decrypt.cmd"
-                    "isocreator\wim\CreateISOWIM.exe"
-                    "isocreator\wim\bin\7z.dll"
-                    "isocreator\wim\bin\7z.exe"
-                    "isocreator\wim\bin\bcdedit.exe"
-                    "isocreator\wim\bin\bfi.exe"
-                    "isocreator\wim\bin\cdimage.exe"
-                    "isocreator\wim\bin\esddecrypt.exe"
-                    "isocreator\wim\bin\imagex.exe"
-                    "isocreator\wim\bin\libwim-15.dll"
-                    "isocreator\wim\bin\offlinereg.exe"
-                    "isocreator\wim\bin\offreg.dll"
-                    "isocreator\wim\bin\rawcopy.exe"
-                    "isocreator\wim\bin\wim-update.txt"
-                    "isocreator\wim\bin\wimlib-imagex.exe"
-                    "isocreator\wim\bin\bin64\libwim-15.dll"
-                    "isocreator\wim\bin\bin64\wimlib-imagex.exe"
-                    "regfiles\ALOS-ImageTools (Remove) (Retain Classic Menu).reg"
-                    "regfiles\ALOS-ImageTools (Remove) (Revert To Modern Menu).reg"
-                    "regfiles\ALOS-ImageTools_WF.reg"
-                    "regfiles\ALOS-ImageTools_WPF.reg"
-                )
+                $Files = $Binaries
                 $PresentFiles = Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Root.Length + 1) }
                 $Missing = $Files | Where-Object { $_ -notin $PresentFiles }
                 if ($Missing) {
@@ -5202,5 +5261,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5206
+    Line count: 5265
 #>
