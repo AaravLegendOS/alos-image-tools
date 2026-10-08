@@ -1,4 +1,4 @@
-<img width="1200" height="1200" alt="ALOS Image Tools" src="https://github.com/user-attachments/assets/d0856316-cafd-4755-b88e-8885db2d0850" />
+<img width="1254" height="1254" alt="ALOS Image Tools" src="https://github.com/user-attachments/assets/642c57e7-d160-4a05-8581-bcbb72c517e3" />
 
 # ALOS Image Tools
 
