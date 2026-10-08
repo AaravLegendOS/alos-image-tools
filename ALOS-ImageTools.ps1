@@ -538,6 +538,7 @@ if (($InstallingWindows) -and ($Op -cne "Apply")) { Error "Argument not valid. Y
 if (($NoHashes) -and ($Op -cne "GetInfo")) { Error "Argument not valid. You passed `"-NoHashes`" but forgot to use the `"GetInfo`" operation. Very silly mistake." }
 if (($NoUpdate -and $AutoUpdate) -or ($AutoUpdate -and $ForceUpdate) -or ($NoUpdate -and $ForceUpdate)) { Error "These switches are mutually exclusive." }
 if (($NoWait) -or ($CompressZip) -and ($Op -cne "SetupProgram") -and ($Path -cne "SetupProgram")) { Error "Argument not valid. You passed `"-NoWait`" or `"-CompressZip`" but forgot to use the `"SetupProgram`" operation and path. Very silly mistake." }
+if (($NoWait) -or ($CompressBinariesZip) -and ($Op -cne "SetupProgram") -and ($Path -cne "SetupProgram")) { Error "Argument not valid. You passed `"-NoWait`" or `"-CompressBinariesZip`" but forgot to use the `"SetupProgram`" operation and path. Very silly mistake." }
 # Adjust execution policy if script execution policy is not 'Bypass'.
 if ((Get-ExecutionPolicy) -cne "Bypass") { Set-ExecutionPolicy Bypass -Scope Process -Force }
 Import-Module DISM -Force
@@ -5261,5 +5262,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5265
+    Line count: 5266
 #>
