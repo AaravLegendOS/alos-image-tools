@@ -488,15 +488,42 @@ function Question {
     }
 }
 # Function to show error message and exit.
-function Error($Message) {
+function Error($Message, $CustomErrorCode=1) {
     $Host.UI.RawUI.WindowTitle = "$Op Failed On $Path" # Set the Window Title to say failed.
     if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null }
-    exit 1
+    exit $CustomErrorCode
 }
 # Function to show warning message.
 function Warn($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
 # Function to show information message.
 function Info($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
+# [SPECIAL, NEW] Function to verify that the date and time does not match Remembrance Day.
+function Test-RemembranceDayWindow {
+    $DateTime = Get-Date
+    if (((Get-WinHomeLocation).GeoID -eq 242) -and ($DateTime.Month -eq 11) -and ($DateTime.Day -eq 11)) {
+        $WindowStart = $DateTime.Date.AddHours(10).AddMinutes(58)
+        $WindowEnd = $DateTime.Date.AddHours(11).AddMinutes(3)
+        return (($DateTime -ge $WindowStart) -and ($DateTime -lt $WindowEnd))
+    } else { return $false }
+}
+# [SPECIAL, NEW] Function to enforce Remembrance Day silence. UK ONLY.
+function Invoke-RemembranceDayAction {
+    Clear-Host
+    Write-Host @'
+------------------------------------------------------------
+At the going down of the sun and in the morning,
+we will remember them.
+
+We shall remember them.
+
+Lest we forget.
+
+Their name liveth for everyone.
+------------------------------------------------------------
+'@ -ForegroundColor Magenta
+    Error 'You should be observing silence for all the people that died in World War One. Remember this: 22 million people died and 40 million were wounded. Read the message in the console and try again at 11:02am.' 11
+}
+if (Test-RemembranceDayWindow) { Invoke-RemembranceDayAction }
 # Function to set-progress. It depends on the Write-Progress cmdlet!
 function Set-Progress {
     param(
@@ -527,7 +554,7 @@ function Complete-Progress {
     Write-Progress -Id $ProgID -Activity $Activity -Status "Completed" -PercentComplete 100 -Completed
 }
 # Define a SHA256 hash.
-$RealFilesHash = "D378D104B0ADB0FCEE34B4B9CE43F51B8BA16D4BD5559CA5D8A5E169DBB76005"
+$BinaryFilesHash = "30EB2F153388739EFDDA6C8673BA97681067472AC60DBA36CCA2FF177DAF1DC5"
 # Obtain and validate architecture.
 $AArch = [int](Get-CimInstance Win32_Processor).Architecture # AArch is temp variable in this case.
 $Arch = if ($AArch -eq 9) { "AMD64" } elseif ($AArch -eq 12) { "ARM64" } else { "UNSUPPORTED" } # Arch is our permanent variable.
@@ -621,9 +648,10 @@ if (($NewestVersion -ne "OFFLINE") -and (($CurrentVersion -lt $NewestVersion) -a
                     Clear-Host
                     Write-Host "Update to $NewestVersion has succeeded. ALOS Image Tools is restarting to reflect the changes..." -ForegroundColor Green
                     $Relaunch_Arguments = @('-NoProfile','-NoLogo','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"",'-Op',$Op,'-Path',"`"$Path`"")
-                    if ($InstallingWindows) { $Relaunch_Arguments += "-InstallingWindows" }
-                    if ($NoHashes) { $Relaunch_Arguments += "-NoHashes" }
-                    if ($WPFUI) { $Relaunch_Arguments += "-WPFUI" }
+                    if ($InstallingWindows) { $Relaunch_Arguments += '-InstallingWindows' }
+                    if ($NoHashes) { $Relaunch_Arguments += '-NoHashes' }
+                    if ($WPFUI) { $Relaunch_Arguments += '-WPFUI' }
+                    if ($NoWait) { $Relaunch_Arguments += '-NoWait' }
                     $Relaunch_Arguments += '-Updated Yes'
                     Start-Process PowerShell -ArgumentList $Relaunch_Arguments -Verb RunAs
                     Exit 0
@@ -4879,7 +4907,7 @@ Windows Registry Editor Version 5.00
                 if ($Missing) {
                     if (-not (Test-Path -LiteralPath $ZipPath)) { Invoke-WebRequest -Uri "${GithubRepo}/raw/refs/heads/main/ALOS-ImageTools_Files.zip" -OutFile $ZipPath }
                     $Hash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToUpper()
-                    if ($Hash -cne $RealFilesHash) { return $false }
+                    if ($Hash -cne $BinaryFilesHash) { return $false }
                     Expand-Archive -Path $ZipPath -DestinationPath $Root -Force
                 }
                 if (Test-Path -LiteralPath $ZipPath) { Remove-Item -Path $ZipPath -Force }
@@ -5262,5 +5290,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5266
+    Line count: 5294
 #>
