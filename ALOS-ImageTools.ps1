@@ -502,7 +502,7 @@ function Test-RemembranceDayWindow {
     $DateTime = Get-Date
     if (((Get-WinHomeLocation).GeoID -eq 242) -and ($DateTime.Month -eq 11) -and ($DateTime.Day -eq 11)) {
         $WindowStart = $DateTime.Date.AddHours(10).AddMinutes(58)
-        $WindowEnd = $DateTime.Date.AddHours(11).AddMinutes(3)
+        $WindowEnd = $DateTime.Date.AddHours(11).AddMinutes(2)
         return (($DateTime -ge $WindowStart) -and ($DateTime -lt $WindowEnd))
     } else { return $false }
 }
