@@ -497,7 +497,7 @@ function Error($Message, $CustomErrorCode=1) {
 function Warn($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null } }
 # Function to show information message.
 function Info($Message) { if ($WPFUI) { [System.Windows.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Information) | Out-Null } else { [System.Windows.Forms.MessageBox]::Show($Message,'ALOS Image Tools',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null } }
-# [SPECIAL, NEW] Function to verify that the date and time does not match Remembrance Day.
+# [SPECIAL] Function to verify that the date and time does not match Remembrance Day.
 function Test-RemembranceDayWindow {
     $DateTime = Get-Date
     if (((Get-WinHomeLocation).GeoID -eq 242) -and ($DateTime.Month -eq 11) -and ($DateTime.Day -eq 11)) {
@@ -506,7 +506,7 @@ function Test-RemembranceDayWindow {
         return (($DateTime -ge $WindowStart) -and ($DateTime -lt $WindowEnd))
     } else { return $false }
 }
-# [SPECIAL, NEW] Function to enforce Remembrance Day silence. UK ONLY.
+# [SPECIAL] Function to enforce Remembrance Day silence. UK ONLY.
 function Invoke-RemembranceDayAction {
     Clear-Host
     Write-Host @'
@@ -520,7 +520,7 @@ Lest we forget.
 
 Their name liveth for everyone.
 ------------------------------------------------------------
-'@ -ForegroundColor Magenta
+'@ -ForegroundColor Red # Use red because the poppies are red.
     Error 'You should be observing silence for all the people that died in World War One. Remember this: 22 million people died and 40 million were wounded. Read the message in the console and try again at 11:02am.' 11
 }
 if (Test-RemembranceDayWindow) { Invoke-RemembranceDayAction }
@@ -2963,7 +2963,7 @@ switch -CaseSensitive ($Op) {
                 if (-not $root) { Error "Unable to determine the drive root for the selected path." }
                 $DriveLetter = $root.Substring(0,1)
                 if (-not ($DriveLetter -match '^[A-Za-z]$')) { Error "Could not determine a valid drive letter from: $root" }
-                Set-Progress "Formatting drive ${DriveLetter}..." 40
+                Set-Progress "Apply" "Formatting drive ${DriveLetter}..." 40
                 Format-Volume -DriveLetter "$DriveLetter" -FileSystem NTFS -NewFileSystemLabel "Windows" -ErrorAction Stop
             } catch {
                 Error "Formatting failed or was cancelled by the user.`r`n`r`nError details:`r`n$_"
@@ -2976,7 +2976,7 @@ switch -CaseSensitive ($Op) {
             & $mountvol @('A:\','/s') > $null 2>&1 # Mount EFI system partition.
             & $bcdboot @("$dir\Windows",'/s','A:\','/f','ALL') > $null 2>&1 # Create boot files or update bcd.
             & $mountvol @('A:\','/d') > $null 2>&1 # Unmount EFI system partition.
-            $result = Question "Completed. Do you want to reboot into firmware to configure boot order?" Information
+            $result = Question "Completed. Do you want to reboot into firmware to configure boot order?" YesNo Information
             if ($result -eq "Yes") { & shutdown @('/r', '/fw', '/f', '/t', 0) } # If they consent, reboot to firmware setup. :)
         }
         Complete-Progress "Apply"
