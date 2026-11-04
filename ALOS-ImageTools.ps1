@@ -5077,9 +5077,9 @@ Windows Registry Editor Version 5.00
                           Margin="0,0,0,4"
                           SelectedIndex="2"
                           VerticalAlignment="Top">
-                    <ComboBoxItem Content="Dark Mode"/>
-                    <ComboBoxItem Content="Light Mode"/>
-                    <ComboBoxItem Content="Auto"/>
+                    <ComboBoxItem Content="Dark Theme"/>
+                    <ComboBoxItem Content="Light Theme"/>
+                    <ComboBoxItem Content="System Theme"/>
                 </ComboBox>
             </Grid>
             <TextBlock Grid.Row="1"
@@ -5209,6 +5209,10 @@ Windows Registry Editor Version 5.00
             $Window.WindowState = [System.Windows.WindowState]::Maximized
             $Window.ResizeMode = [System.Windows.ResizeMode]::NoResize
             $Window.WindowStyle = [System.Windows.WindowStyle]::None
+            $Window.Left = 0
+            $Window.Top = 0
+            $Window.Width = [System.Windows.SystemParameters]::PrimaryScreenWidth
+            $Window.Height = [System.Windows.SystemParameters]::PrimaryScreenHeight
             $Window.TopMost = $true
             $Window.ShowInTaskbar = $false
             [void]$Window.ShowDialog()
@@ -5222,6 +5226,10 @@ Windows Registry Editor Version 5.00
             $Form.MinimizeBox = $false
             $Form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
             $Form.WindowState = [System.Windows.Forms.FormWindowState]::Maximized
+            $Form.Left = 0
+            $Form.Top = 0
+            $Form.Width = [System.Windows.SystemParameters]::PrimaryScreenWidth
+            $Form.Height = [System.Windows.SystemParameters]::PrimaryScreenHeight
             $Form.ShowInTaskbar = $false
             $Form.TopMost = $true
             $ThemeColours = Is-LightModeOn
@@ -5290,5 +5298,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5294
+    Line count: 5302
 #>
