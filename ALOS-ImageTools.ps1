@@ -3538,8 +3538,9 @@ switch -CaseSensitive ($Op) {
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 "@
         $ConsoleHandle = [Interop.Console]::GetConsoleWindow()
-        if ($ConsoleHandle -ne [IntPtr]::Zero) { [void][Interop.Console]::ShowWindow($ConsoleHandle, 0) }
+        # if ($ConsoleHandle -ne [IntPtr]::Zero) { [void][Interop.Console]::ShowWindow($ConsoleHandle, 0) }
         if ($Op -ceq "SetupProgram" -and $Path -cne "SetupProgram") { Error "The path also needs to be SetupProgram." }
+        $script:AllowClose = $false
         function Get-WPFThemeColours {
             if ($script:ThemeMode) {
                 $Resolved = $script:ThemeMode
@@ -5093,7 +5094,7 @@ Windows Registry Editor Version 5.00
                        FontSize="16"
                        Margin="0,0,0,14" />
             <TextBlock Grid.Row="3"
-                       Text="Press Alt F4 to exit."
+                       Text="Press the cancel button to exit."
                        Foreground="White"
                        FontSize="16"
                        Margin="0,0,0,14" />
@@ -5103,7 +5104,7 @@ Windows Registry Editor Version 5.00
                 <TextBlock Text="3: Reinstall with latest registry entries." Foreground="LightSkyBlue" Margin="0,0,0,4" />
             </StackPanel>
             <DockPanel Grid.Row="4">
-                <StackPanel DockPanel.Dock="Left" Width="290" Margin="0,0,12,0">
+                <StackPanel DockPanel.Dock="Left" Width="420" Margin="0,0,12,0">
                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                         <Button x:Name="InstallButton"
                                 Content="Install"
@@ -5120,6 +5121,11 @@ Windows Registry Editor Version 5.00
                                 Width="90"
                                 Height="30"
                                 Margin="0,0,10,0" />
+                        <Button x:Name="CancelButton"
+                                Content="Cancel"
+                                Width="90"
+                                Height="30"
+                                Margin="0,0,10,0" />
                     </StackPanel>
                 </StackPanel>
             </DockPanel>
@@ -5132,9 +5138,7 @@ Windows Registry Editor Version 5.00
                     $value = Get-ItemPropertyValue -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name 'AppsUseLightTheme' -ErrorAction Stop
                     if ($value -eq 0) { return 'Dark' }
                     return 'Light'
-                } catch {
-                    return 'Dark'
-                }
+                } catch { return 'Dark' }
             }
             function Get-ThemeColours {
                 $Theme = if ($script:ThemeMode -eq 'Auto') { Get-SystemAppTheme } else { $script:ThemeMode }
@@ -5149,8 +5153,7 @@ Windows Registry Editor Version 5.00
                             ComboHoverBg = '#FFF0F0F0'
                             ComboSelectedBg = '#FFDADADA'
                         }
-                    }
-                    default {
+                    } default {
                         [PSCustomObject]@{
                             Bg = '#FF000000'
                             ControlBg = '#FF000000'
@@ -5161,7 +5164,7 @@ Windows Registry Editor Version 5.00
                             ComboSelectedBg = '#FF3A3A3A'
                         }
                     }
-               }
+                }
             }
             function Set-ThemeBrush {
                 param(
@@ -5192,6 +5195,7 @@ Windows Registry Editor Version 5.00
             $InstallButton = $Window.FindName('InstallButton')
             $UninstallButton = $Window.FindName('UninstallButton')
             $ReinstallButton = $Window.FindName('ReinstallButton')
+            $CancelButton = $Window.FindName('CancelButton')
             $ThemeComboBox = $Window.FindName('ThemeComboBox')
             $script:ThemeMode = 'Auto'
             Apply-Theme
@@ -5206,6 +5210,10 @@ Windows Registry Editor Version 5.00
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsucessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
+            $CancelButton.Add_Click({
+                $script:AllowClose = $true
+                $Window.Close()
+            })
             $Window.WindowState = [System.Windows.WindowState]::Maximized
             $Window.ResizeMode = [System.Windows.ResizeMode]::NoResize
             $Window.WindowStyle = [System.Windows.WindowStyle]::None
@@ -5215,6 +5223,10 @@ Windows Registry Editor Version 5.00
             $Window.Height = [System.Windows.SystemParameters]::PrimaryScreenHeight
             $Window.TopMost = $true
             $Window.ShowInTaskbar = $false
+            $Window.Add_Closing({
+                param($sender, $e)
+                if (-not $script:AllowClose) { $e.Cancel = $true }
+            })
             [void]$Window.ShowDialog()
         } else {
             $Form = New-Object System.Windows.Forms.Form
@@ -5255,7 +5267,7 @@ Windows Registry Editor Version 5.00
             $OptionLabel1 = New-Label '1: Install ALOS Image Tools' 40 124 ([System.Drawing.Color]::LightGreen)
             $OptionLabel2 = New-Label '2: Uninstall ALOS Image Tools' 40 154 ([System.Drawing.Color]::LightCoral)
             $OptionLabel3 = New-Label '3: Reinstall with latest registry entries.' 40 184 ([System.Drawing.Color]::LightSkyBlue)
-            $PromptLabel = New-Label 'Press Alt F4 to exit.' 24 264 ([System.Drawing.Color]::Gainsboro)
+            $PromptLabel = New-Label 'Press the cancel button to exit.' 24 264 ([System.Drawing.Color]::Gainsboro)
             $InstallButton = New-Object System.Windows.Forms.Button
             $InstallButton.Text = 'Install'
             $InstallButton.Location = New-Object System.Drawing.Point(40, 310)
@@ -5277,10 +5289,25 @@ Windows Registry Editor Version 5.00
             $ReinstallButton.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
             $ReinstallButton.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
             $ReinstallButton.FlatStyle = 'Flat'
+            $CancelButton = [System.Windows.Forms.Button]::new()
+            $CancelButton.Text = 'Cancel'
+            $CancelButton.Location = New-Object System.Drawing.Point(340, 310)
+            $CancelButton.Size = New-Object System.Drawing.Size(90, 30)
+            $CancelButton.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
+            $CancelButton.FlatStyle = 'Flat'
+            $CancelButton.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsuccessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
-            $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton))
+            $CancelButton.Add_Click({
+                $script:AllowClose = $true
+                $Form.Close()
+            })
+            $Form.Add_FormClosing({
+                param($sender, $e)
+                if (-not $script:AllowClose) { $e.Cancel = $true }
+            })
+            $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton,$CancelButton))
             $null = $Form.ShowDialog()
         }
     }
@@ -5296,5 +5323,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5300
+    Line count: 5327
 #>
