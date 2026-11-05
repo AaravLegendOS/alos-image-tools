@@ -5228,10 +5228,9 @@ Windows Registry Editor Version 5.00
             $Form.WindowState = [System.Windows.Forms.FormWindowState]::Maximized
             $Form.Left = 0
             $Form.Top = 0
-            $Form.Width = [System.Windows.SystemParameters]::PrimaryScreenWidth
-            $Form.Height = [System.Windows.SystemParameters]::PrimaryScreenHeight
             $Form.ShowInTaskbar = $false
             $Form.TopMost = $true
+            $Form.Bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
             $ThemeColours = Is-LightModeOn
             $Form.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
             $Form.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
@@ -5286,7 +5285,6 @@ Windows Registry Editor Version 5.00
         }
     }
     default {
-        # This can be reached if the casing of valid operations are wrong.
         Error "Unknown operation: ${Op}`r`n`r`nDid you use the correct casing?"
         Exit 9009
     }
@@ -5298,5 +5296,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5302
+    Line count: 5300
 #>
