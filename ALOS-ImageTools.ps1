@@ -3538,7 +3538,7 @@ switch -CaseSensitive ($Op) {
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 "@
         $ConsoleHandle = [Interop.Console]::GetConsoleWindow()
-        # if ($ConsoleHandle -ne [IntPtr]::Zero) { [void][Interop.Console]::ShowWindow($ConsoleHandle, 0) }
+        if ($ConsoleHandle -ne [IntPtr]::Zero) { [void][Interop.Console]::ShowWindow($ConsoleHandle, 0) }
         if ($Op -ceq "SetupProgram" -and $Path -cne "SetupProgram") { Error "The path also needs to be SetupProgram." }
         $script:AllowClose = $false
         function Get-WPFThemeColours {
