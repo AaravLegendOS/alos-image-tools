@@ -5,7 +5,7 @@
     A comprehensive tool built by Aarav Katariya designed to simplify your experience when dealing with WIM, ESD, SWM, ISO and IMG files.
     Built for and around casual users and advanced users so you do not have to remember those long command lines.
     Legal {
-        Copyright (C) 2023-2026 Aarav Katariya
+        Copyright (C) 2023-2027 Aarav Katariya
 
         This program is free software: you can redistribute it and/or modify
         it under the terms of the GNU Affero General Public License as published by
@@ -349,21 +349,33 @@ can also be used for every other operation too.
 # Treat like a proper PowerShell cmdlet. Gives this program common parameters like -Verbose, -Debug, etc.
 [CmdletBinding()]
 param(
+    # Parameter for program operation.
     [Parameter(HelpMessage="What operation do you want to do?")]
     [ValidateSet('Capture','Append','Mount','ExportWIM','ExportESD','RecompressWIM','RecompressESD','ConvertToWIM','ConvertToESD','GetInfo','Apply','SplitWIM','DeleteImage','ApplyAndDeleteImage','CreateISOWIM','CreateISOESD','ExtractWIM','ExtractESD','ExtractSWM','ExtractCLG','SaveWIM','SaveESD','SaveSWM','JoinWIM','JoinESD','ChangeBootIndexWIM','ChangeImageInfo','SetupProgram')]
     [string]$Op = 'SetupProgram',
+    # Parameter for file or folder path.
     [Parameter(HelpMessage="Where is your image file or directory?")]
     [string]$Path = 'SetupProgram',
+    # [DO NOT USE] Parameter to say updated or not.
     [string]$Updated = "No",
-    [switch]$InstallingWindows,
+    # Generic switch for choosing between WPF and WinForms.
     [Parameter(HelpMessage="Do you want to use the modern GUI? True or False value.")]
     [switch]$WPFUI,
+    # [APPLY OPERATION ONLY] Switch for windows installation workflow.
+    [switch]$InstallingWindows,
+    # [GETINFO OPERATION ONLY] Switch for skipping file hashes.
     [switch]$NoHashes,
+    # Generic switch to recover ALOS Image Tools from internet. (Restores latest online version.)
     [switch]$ForceUpdate,
+    # Generic switch to automatically update if newest version found.
     [switch]$AutoUpdate,
+    # Generic switch to suppress updating.
     [switch]$NoUpdate,
+    # [SetupProgram ONLY] Switch to skip reading the legal stuff before setup.
     [switch]$NoWait,
+    # [DEVELOPERS ONLY] Switch to package ALOS Image Tools' files into a zipfile for distribution.
     [switch]$CompressZip,
+    # [DEVELOPERS ONLY] Switch to package binary files into a zipfile for distribution.
     [switch]$CompressBinariesZip
 )
 [array]$Binaries = @(
@@ -820,7 +832,7 @@ if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram") -and (-not $NoWai
 ========================================================================================================================
                                       Welcome To ALOS Image Tools By Aarav Katariya!
 ========================================================================================================================
-Copyright (C) 2023-2026 Aarav Katariya
+Copyright (C) 2023-2027 Aarav Katariya
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -1853,19 +1865,13 @@ function Is-LightModeOn {
             [string]$Path,
             [string]$Name
         )
-        try {
-            $raw = Get-ItemPropertyValue -Path $Path -Name $Name -ErrorAction Stop
-        } catch {
+        try { $raw = Get-ItemPropertyValue -Path $Path -Name $Name -ErrorAction Stop } catch {
             Write-Host "Registry value '$Name' not found at '$Path'."
             return $false
         }
-        try {
-            [int]$val = $raw
-        } catch {
-            if ([int]::TryParse([string]$raw,[ref]$null)) {
-                [int]$val = [int]$raw
-            } else {
-                Write-Verbose "Could not convert registry value '$Name' ('$raw') to int." -Verbose
+        try { [int]$val = $raw } catch {
+            if ([int]::TryParse([string]$raw,[ref]$null)) { [int]$val = [int]$raw } else {
+                Write-Verbose "Could not convert registry value '$Name' ('$raw') to int."
                 return $false
             }
         }
@@ -1883,11 +1889,7 @@ function Quote-Arg {
     param([Parameter(Mandatory)][string]$Arg)
     if ($Arg -eq '') { return '""' }
     $escaped = $Arg -replace '"','\"'
-    if ($escaped -match '\s|["]') {
-        return '"' + $escaped + '"'
-    } else {
-        return $escaped
-    }
+    if ($escaped -match '\s|["]') { return '"' + $escaped + '"' } else { return $escaped }
 }
 # Function to locate an executable from common candidates or PATH.
 function Find-Executable {
@@ -1921,12 +1923,8 @@ function Test-Root {
     $SystemDrive = $env:SYSTEMDRIVE.TrimEnd('\')
     # And prevent selecting the system drive.
     if ($Path.TrimEnd('\') -ieq $SystemDrive) { Error "I am sorry. You may not install Windows here as this can wreck your computer system. + Windows is already installed on this drive." }
-    try {
-        $resolved = (Get-Item -LiteralPath $Path -ErrorAction Stop).FullName
-    } catch {
-        try {
-            $resolved = Convert-Path -LiteralPath $Path -ErrorAction Stop
-        } catch {
+    try { $resolved = (Get-Item -LiteralPath $Path -ErrorAction Stop).FullName } catch {
+        try { $resolved = Convert-Path -LiteralPath $Path -ErrorAction Stop } catch {
             return [PSCustomObject]@{
                 Path = $Path
                 Resolved = $null
@@ -2350,7 +2348,7 @@ function Set-WimImageMetadata {
 function Show-Finished {
     # Finishup :)
     $Host.UI.RawUI.WindowTitle = "$Op Completed On $Path" # Set the Window Title to say done.
-    $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2026 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
+    $MessageExit = if ($Op -eq "SetupProgram") { "Thank you for installing/uninstalling ALOS Image Tools.`r`n`r`nYou may now use the right click menus to quickly start a new operation or task if installed. If uninstalled, we thank you for using ALOS Image Tools.`r`n`r`nCopyright (C) 2023-2027 Aarav Katariya." } else { "Execution has complete.`r`nOperation: $Op.`r`nPath: $Path" }
     Info $MessageExit # Say to the user that the task is complete.
     try { $null = Get-Process -Name explorer -ErrorAction Stop } catch { Start-Process -FilePath explorer.exe -Verb RunAs } # Start explorer if it is not running. This is a failsafe for when the user has killed explorer.exe and it does not automatically start.
     if (($Op -ceq "SetupProgram") -and ($Path -ceq "SetupProgram")) { Stop-Process -Id $Pid -Force } # If setup is launched, forcibly kill the PowerShell process because we assume user launched from the PowerShell command-line.
@@ -5323,5 +5321,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5327
+    Line count: 5325
 #>
