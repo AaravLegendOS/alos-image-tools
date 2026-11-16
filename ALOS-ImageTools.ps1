@@ -847,14 +847,15 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+**This legal notice must be displayed under Section 0 and 5 of the GNU AGPL.**
+Additional legal clarification is here:
+
 Wimlib-imagex.exe is licensed under the GNU General Public License version
 3 or any later version. That is, for Windows builds. This program just calls
 a compiled exe AS A SEPARATE PROCESS even though the code of wimlib-imagex can
 be combined. Aarav Katariya chose not to combine them to avoid a combined work
 except, the AGPL code stays AGPL and the GPL code stays GPL without needing to
 relicense the combined work as stated in the GNU Affero General Public License.
-
-**This legal notice must be displayed under Section 0 and 5 of the GNU AGPL.**
 
 If you want to exit setup, you need to press Alt F4. The setup goes full screen on top of every other window.
 '@
@@ -5321,5 +5322,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5325
+    Line count: 5326
 #>
