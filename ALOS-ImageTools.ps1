@@ -1668,15 +1668,14 @@ function Pick-Index {
                 Name  = ''
             }
             $entries += $current
-        }
-        elseif ($current -and $line -match '^\s*Name\s*:\s*(.+)') { $current.Name = $matches[1].Trim() }
+        } elseif ($current -and $line -match '^\s*Name\s*:\s*(.+)') { $current.Name = $matches[1].Trim() }
     }
     if (-not $entries) { Error "No images found in:`r`n$Path" }
     if ($entries.Count -eq 1) { return [int]$entries[0].Index }
     $Form = New-Object Windows.Forms.Form
     $Form.Text = if ($MultipleImages) { "Select one or more image indices using Ctrl+Click." } else { "Select an image index" }
     $Form.Width = 800
-    $Form.Height = 600
+    $Form.Height = 800
     $Form.StartPosition = 'CenterScreen'
     $Form.MinimizeBox = $false
     $Form.MaximizeBox = $false
@@ -3398,7 +3397,7 @@ switch -CaseSensitive ($Op) {
         $WinForm = New-Object System.Windows.Forms.Form
         $WinForm.Text = "WIM Information Changer - Index $Index"
         $WinForm.Width = 700
-        $WinForm.Height = 430
+        $WinForm.Height = 500
         $WinForm.StartPosition = 'CenterScreen'
         $WinForm.FormBorderStyle = 'FixedDialog'
         $WinForm.MaximizeBox = $false
@@ -3495,7 +3494,7 @@ switch -CaseSensitive ($Op) {
             $Table.RowStyles[2].Height = if ($VisibleExtended) { 0 } else { 0 }
             $Table.RowStyles[4].SizeType = if ($VisibleExtended) { [System.Windows.Forms.SizeType]::AutoSize } else { [System.Windows.Forms.SizeType]::Absolute }
             $Table.RowStyles[4].Height = if ($VisibleExtended) { 0 } else { 0 }
-            $Hint.Text = if ($VisibleExtended) { 'Separate mode is enabled. Name and display name, and description and display description, can be edited independently.' } else { 'By default, editing name and description also edits the display name and display description. Enable separate mode above to edit them independently.' }
+            $Hint.Text = if ($VisibleExtended) { 'You can now edit name and display name, and description and display description independently.' } else { 'By default, editing name and description also edits the display name and display description. Enable the checkbox to edit them independently.' }
             $Table.PerformLayout()
             $WinForm.PerformLayout()
         }
@@ -3529,7 +3528,7 @@ switch -CaseSensitive ($Op) {
         if ($Verify.Flags -cne $ExpectedFlags) { Error "WIM verification failed for FLAGS.`r`n`r`nExpected: [$ExpectedFlags]`r`nActual: [$($Verify.Flags)]" }
         Complete-Progress $Op
         Clear-Host
-        Info "Success! We have changed image ${Index}'s properties!`r`n`r`nName: $($Verify.Name)`r`nDescription: $($Verify.Description)`r`nFlags: $($Verify.Flags)`r`n`r`nWIM: $Path"
+        Info "Success! We have changed image ${Index}'s properties!`r`n`r`nName: $($Verify.Name)`r`nDescription: $($Verify.Description)`r`nDisplay Name: $($Verify.DisplayName)`r`nDisplay Description: $($Verify.DisplayDescription)`r`nFlags: $($Verify.Flags)`r`n`r`nWIM File: $Path"
     }
     'SetupProgram' {
         Add-Type -Name 'Console' -Namespace 'Interop' -MemberDefinition @"
@@ -3672,11 +3671,11 @@ Windows Registry Editor Version 5.00
                 $PromptLabel = $Window.FindName('PromptLabel')
                 $InputBox = $Window.FindName('InputBox')
                 $OkButton = $Window.FindName('OkButton')
-                $CancelButton = $Window.FindName('CancelButton')
+                $CloseButton = $Window.FindName('CancelButton')
                 $PromptLabel.Text = $Prompt
                 $InputBox.Text = $DefaultValue
                 $OkButton.Add_Click({ $Window.DialogResult = $true; $Window.Close() })
-                $CancelButton.Add_Click({ $Window.DialogResult = $false; $Window.Close() })
+                $CloseButton.Add_Click({ $Window.DialogResult = $false; $Window.Close() })
                 $InputBox.Add_Loaded({ $InputBox.Focus(); $InputBox.SelectAll() })
                 $Window.TopMost = $true
                 [void]$Window.ShowDialog()
@@ -3716,17 +3715,17 @@ Windows Registry Editor Version 5.00
                 $OkButton.FlatStyle = 'Flat'
                 $OkButton.BackColor = $DialogBack
                 $OkButton.ForeColor = $DialogFore
-                $CancelButton = New-Object System.Windows.Forms.Button
-                $CancelButton.Text = 'Cancel'
-                $CancelButton.Location = New-Object System.Drawing.Point(508, 118)
-                $CancelButton.Size = New-Object System.Drawing.Size(80, 30)
-                $CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-                $CancelButton.FlatStyle = 'Flat'
-                $CancelButton.BackColor = $DialogBack
-                $CancelButton.ForeColor = $DialogFore
-                $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CancelButton))
+                $CloseButton = New-Object System.Windows.Forms.Button
+                $CloseButton.Text = 'Cancel'
+                $CloseButton.Location = New-Object System.Drawing.Point(508, 118)
+                $CloseButton.Size = New-Object System.Drawing.Size(80, 30)
+                $CloseButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+                $CloseButton.FlatStyle = 'Flat'
+                $CloseButton.BackColor = $DialogBack
+                $CloseButton.ForeColor = $DialogFore
+                $InputForm.Controls.AddRange(@($PromptLabel, $InputBox, $OkButton, $CloseButton))
                 $InputForm.AcceptButton = $OkButton
-                $InputForm.CancelButton = $CancelButton
+                $InputForm.CancelButton = $CloseButton
                 $InputForm.TopMost = $true
                 $InputResult = $InputForm.ShowDialog()
                 if ($InputResult -eq [System.Windows.Forms.DialogResult]::OK) { return $InputBox.Text }
@@ -5093,7 +5092,7 @@ Windows Registry Editor Version 5.00
                        FontSize="16"
                        Margin="0,0,0,14" />
             <TextBlock Grid.Row="3"
-                       Text="Press the cancel button to exit."
+                       Text="Press the close button to exit."
                        Foreground="White"
                        FontSize="16"
                        Margin="0,0,0,14" />
@@ -5120,8 +5119,8 @@ Windows Registry Editor Version 5.00
                                 Width="90"
                                 Height="30"
                                 Margin="0,0,10,0" />
-                        <Button x:Name="CancelButton"
-                                Content="Cancel"
+                        <Button x:Name="CloseButton"
+                                Content="Close"
                                 Width="90"
                                 Height="30"
                                 Margin="0,0,10,0" />
@@ -5194,7 +5193,7 @@ Windows Registry Editor Version 5.00
             $InstallButton = $Window.FindName('InstallButton')
             $UninstallButton = $Window.FindName('UninstallButton')
             $ReinstallButton = $Window.FindName('ReinstallButton')
-            $CancelButton = $Window.FindName('CancelButton')
+            $CloseButton = $Window.FindName('CancelButton')
             $ThemeComboBox = $Window.FindName('ThemeComboBox')
             $script:ThemeMode = 'Auto'
             Apply-Theme
@@ -5209,7 +5208,7 @@ Windows Registry Editor Version 5.00
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsucessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
-            $CancelButton.Add_Click({
+            $CloseButton.Add_Click({
                 $script:AllowClose = $true
                 $Window.Close()
             })
@@ -5266,7 +5265,7 @@ Windows Registry Editor Version 5.00
             $OptionLabel1 = New-Label '1: Install ALOS Image Tools' 40 124 ([System.Drawing.Color]::LightGreen)
             $OptionLabel2 = New-Label '2: Uninstall ALOS Image Tools' 40 154 ([System.Drawing.Color]::LightCoral)
             $OptionLabel3 = New-Label '3: Reinstall with latest registry entries.' 40 184 ([System.Drawing.Color]::LightSkyBlue)
-            $PromptLabel = New-Label 'Press the cancel button to exit.' 24 264 ([System.Drawing.Color]::Gainsboro)
+            $PromptLabel = New-Label 'Press the close button to exit.' 24 264 ([System.Drawing.Color]::Gainsboro)
             $InstallButton = New-Object System.Windows.Forms.Button
             $InstallButton.Text = 'Install'
             $InstallButton.Location = New-Object System.Drawing.Point(40, 310)
@@ -5288,17 +5287,17 @@ Windows Registry Editor Version 5.00
             $ReinstallButton.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
             $ReinstallButton.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
             $ReinstallButton.FlatStyle = 'Flat'
-            $CancelButton = [System.Windows.Forms.Button]::new()
-            $CancelButton.Text = 'Cancel'
-            $CancelButton.Location = New-Object System.Drawing.Point(340, 310)
-            $CancelButton.Size = New-Object System.Drawing.Size(90, 30)
-            $CancelButton.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
-            $CancelButton.FlatStyle = 'Flat'
-            $CancelButton.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
+            $CloseButton = [System.Windows.Forms.Button]::new()
+            $CloseButton.Text = 'Close'
+            $CloseButton.Location = New-Object System.Drawing.Point(340, 310)
+            $CloseButton.Size = New-Object System.Drawing.Size(90, 30)
+            $CloseButton.BackColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::Black } else { [System.Drawing.Color]::White }
+            $CloseButton.FlatStyle = 'Flat'
+            $CloseButton.ForeColor = if ($ThemeColours.Apps) { [System.Drawing.Color]::White } else { [System.Drawing.Color]::Black }
             $InstallButton.Add_Click({ if (Install-ALOSImageTools) { Info 'Successful install.' } else { Warn 'Unsuccessful install.' } })
             $UninstallButton.Add_Click({ if (Uninstall-ALOSImageTools) { Info 'Successful uninstall.' } else { Warn 'Unsuccessful uninstall.' } })
             $ReinstallButton.Add_Click({ if ((Uninstall-ALOSImageTools) -and (Install-ALOSImageTools)) { Info 'Successful reinstall.' } else { Warn 'Unsuccessful reinstall.' } })
-            $CancelButton.Add_Click({
+            $CloseButton.Add_Click({
                 $script:AllowClose = $true
                 $Form.Close()
             })
@@ -5306,7 +5305,7 @@ Windows Registry Editor Version 5.00
                 param($sender, $e)
                 if (-not $script:AllowClose) { $e.Cancel = $true }
             })
-            $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton,$CancelButton))
+            $Form.Controls.AddRange(@($TitleLabel1,$TitleLabel2,$TitleLabel3,$OptionLabel1,$OptionLabel2,$OptionLabel3,$PromptLabel,$InstallButton,$UninstallButton,$ReinstallButton,$CloseButton))
             $null = $Form.ShowDialog()
         }
     }
@@ -5322,5 +5321,5 @@ Show-Finished
     Run either SETUP_WF.EXE or SETUP_WPF.EXE in the same folder or just
     execute this script without any arguments to launch setup.
     Made by Aarav Katariya with love and care...
-    Line count: 5326
+    Line count: 5325
 #>
